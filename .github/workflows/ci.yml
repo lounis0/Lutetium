@@ -27,16 +27,21 @@ jobs:
           cargo --version
 
       - name: Format
+        if: always()
         run: cargo fmt --all -- --check
 
       - name: Check workspace
+        if: always()
         run: cargo check --workspace
 
       - name: Build workspace
+        if: always()
         run: cargo build --workspace
 
       - name: Test workspace
+        if: always()
         run: cargo test --workspace
 
       - name: Release build
+        if: always()
         run: cargo build --release
