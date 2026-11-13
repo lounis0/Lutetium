@@ -1,0 +1,10 @@
+[package]
+name = "lu-syntax"
+version.workspace = true
+edition.workspace = true
+
+[lib]
+name = "lu_syntax"
+
+[dependencies]
+lu-diagnostics = { path = "../diagnostics" }

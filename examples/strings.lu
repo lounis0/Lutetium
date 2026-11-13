@@ -1,0 +1,20 @@
+# Strings, floats, booleans and short-circuit logic.
+
+fn describe(n: int) -> str {
+    if n % 2 == 0 {
+        return "even"
+    }
+    return "odd"
+}
+
+fn main() {
+    print("sum: " + describe(42))
+
+    let ratio = 1.5 + 2.25
+    print(ratio)
+
+    let ok = ratio > 3.0 && ratio < 4.0
+    print(ok)
+
+    print(ok == false || true)
+}

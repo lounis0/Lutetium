@@ -1,0 +1,29 @@
+found = -1
+for x in [3, 7, 9, 12] {
+    if x == 9 {
+        found = x
+        break
+    }
+    if x > 100 {
+        continue
+    }
+}
+print(found)
+skip = 0
+for x in [1, 2, 3, 4, 5] {
+    if x == 3 {
+        continue
+    }
+    skip = skip + x
+}
+print(skip)
+for i in 0..3 {
+    print(i)
+}
+nested = 0
+for a in [1, 2] {
+    for b in [10, 20] {
+        nested = nested + a * b
+    }
+}
+print(nested)

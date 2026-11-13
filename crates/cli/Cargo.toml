@@ -1,0 +1,18 @@
+[package]
+name = "lutetium-cli"
+version.workspace = true
+edition.workspace = true
+
+[lib]
+name = "lutetium_cli"
+
+[[bin]]
+name = "lutetium"
+path = "src/main.rs"
+
+[dependencies]
+lu-diagnostics = { path = "../diagnostics" }
+lu-syntax = { path = "../syntax" }
+lu-vm = { path = "../vm" }
+lu-compiler = { path = "../compiler" }
+lu-native = { path = "../native" }

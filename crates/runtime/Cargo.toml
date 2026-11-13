@@ -1,0 +1,13 @@
+[package]
+name = "lu-runtime"
+version = "0.1.0"
+edition = "2021"
+
+# The runtime is not built as an ordinary workspace crate; it is compiled by
+# `crates/native/build.rs` with plain rustc (crate-type staticlib) so that
+# native executables can link it. This manifest exists for documentation and
+# tooling consistency only.
+[lib]
+name = "lutetium_runtime"
+crate-type = ["staticlib"]
+path = "src/lib.rs"

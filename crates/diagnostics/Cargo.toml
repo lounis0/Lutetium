@@ -1,0 +1,7 @@
+[package]
+name = "lu-diagnostics"
+version.workspace = true
+edition.workspace = true
+
+[lib]
+name = "lu_diagnostics"

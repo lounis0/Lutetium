@@ -1,0 +1,29 @@
+total = 0
+for x in [1, 2, 3, 4, 5, 6, 7, 8, 9, 10] {
+    total = total + x
+    junk = [0, 0, 0, 0]
+    junk.push(x)
+    if junk.len() != 5 {
+        print(-1)
+    }
+}
+print(total)
+grow = [1]
+for x in grow {
+    if x < 5 {
+        grow.push(x + 1)
+    }
+}
+print(grow.len())
+shrink = [1, 2, 3, 4, 5]
+for x in shrink {
+    shrink.pop()
+}
+print(shrink.len())
+empty = [0]
+empty.pop()
+count = 0
+for x in empty {
+    count = count + 1
+}
+print(count)

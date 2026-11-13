@@ -1,0 +1,4 @@
+[toolchain]
+# Lutetium never requires MSVC: pin the Windows GNU toolchain, which links
+# self-contained (rust-mingw ships the MinGW-w64 linker).
+channel = "stable-x86_64-pc-windows-gnu"

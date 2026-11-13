@@ -1,0 +1,12 @@
+[package]
+name = "lu-compiler"
+version.workspace = true
+edition.workspace = true
+
+[lib]
+name = "lu_compiler"
+
+[dependencies]
+lu-diagnostics = { path = "../diagnostics" }
+lu-syntax = { path = "../syntax" }
+lu-vm = { path = "../vm" }

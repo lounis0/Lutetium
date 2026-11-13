@@ -1,0 +1,19 @@
+[workspace]
+resolver = "2"
+members = [
+    "crates/diagnostics",
+    "crates/syntax",
+    "crates/vm",
+    "crates/compiler",
+    "crates/cli",
+    "crates/native",
+]
+
+[workspace.package]
+version = "0.4.1"
+edition = "2021"
+
+[profile.release]
+lto = "thin"
+codegen-units = 1
+strip = true

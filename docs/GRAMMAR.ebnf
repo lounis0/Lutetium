@@ -1,0 +1,67 @@
+(* Lutetium grammar — implemented subset. Keep in sync with docs/LANGUAGE_SPEC.md
+   and crates/syntax/src/parser.rs. *)
+
+module        = { newline } , { top_item } , EOF ;
+top_item      = function | statement ;
+
+function      = "fn" , IDENT , "(" , [ params ] , ")" , [ "->" , type ] , block ;
+params        = param , { "," , param } ;
+param         = IDENT , [ ":" , type ] ;
+type          = "int" | "float" | "bool" | "str" | "unit" ;
+
+block         = "{" , { statement } , "}" ;
+
+statement     = "let" , [ "mut" ] , IDENT , [ ":" , type ] , "=" , expr
+              | "if" , expr , block , { "else" , ( if_stmt | block ) }
+              | "while" , expr , block
+              | "for" , IDENT , "in" , add_expr , ( ".." | "..=" ) , add_expr , block
+              | "return" , [ expr ]
+              | "break" | "continue"
+              | IDENT , assign_op , expr
+              | expr ;
+if_stmt       = "if" , expr , block ;
+assign_op     = "=" | "+=" | "-=" | "*=" | "/=" ;
+
+expr          = or_expr ;
+or_expr       = and_expr , { "||" , and_expr } ;
+and_expr      = cmp_expr , { "&&" , cmp_expr } ;
+cmp_expr      = add_expr , [ ( "==" | "!=" | "<" | "<=" | ">" | ">=" ) , add_expr ] ;
+add_expr      = mul_expr , { ( "+" | "-" ) , mul_expr } ;
+mul_expr      = unary , { ( "*" | "/" | "%" ) , unary } ;
+unary         = ( "-" | "!" ) , unary | postfix ;
+postfix       = primary , { "[" , expr , "]"
+                           | "." , IDENT , "(" , [ args ] , ")"
+                           | "." , IDENT } ;
+primary       = INT | FLOAT | STRING | "true" | "false"
+              | IDENT , [ "(" , [ args ] , ")" ]
+              | "[" , [ args ] , "]"
+              | map_literal
+              | if_expr
+              | "(" , expr , ")" ;
+map_literal   = "{" , [ map_entry , { "," , map_entry } , [ "," ] ] , "}" ;
+map_entry     = IDENT , ":" , expr ;
+args          = expr , { "," , expr } ;
+if_expr       = "if" , expr , block , "else" , ( if_expr | block ) ;
+                 (* value-position `if` requires `else` (E2006) *)
+
+(* Notes:
+   - statements are newline/semicolon separated; blocks are brace-delimited
+   - in expression position a `{` always starts a map literal; blocks only
+     appear after `fn`/`if`/`while`/`for`/`else`
+   - the first plain assignment `IDENT = expr` to an unknown identifier
+     declares a mutable local with the inferred type
+   - a function body may end with a value expression (implicit return)
+   - unannotated parameter types are inferred from call sites (E3002 when
+     impossible; E3001 on conflicting call sites)
+   - postfix: indexing (`lst[0]`, negative indices count from the end),
+     built-in method calls (`lst.push(v)`, `s.upper()`, `m.get("k")`) and
+     field access (`m.key`, maps only)
+   - list literals are `[a, b, c]`; all elements one type (E3001), non-empty
+     (E3002), no nesting (E3001)
+   - map literals are `{name: "Ada", score: 95}`; keys are identifiers read
+     as string keys (a later duplicate key wins); values are per-key typed
+     scalars, no nesting (E3001); field access / `get` / `set` are checked
+     against the literal's keys (E3010), at most 127 entries (E3016)
+   - built-in free functions: sqrt pow floor ceil round log sin cos tan
+     (float), abs min max (overloaded int/float), read_text write_text
+     file_exists (fs) *)

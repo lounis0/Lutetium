@@ -1,0 +1,4 @@
+# Lutetium builds with the Windows GNU toolchain (self-contained MinGW-w64
+# linker shipped by rustup). MSVC / Visual Studio is never required.
+[build]
+target = "x86_64-pc-windows-gnu"

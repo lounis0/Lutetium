@@ -1,0 +1,12 @@
+fn main() {
+    print("Hello from Lutetium")
+
+    let mut values_sum = 0
+    let mut i = 1
+    while i <= 5 {
+        values_sum += i
+        i += 1
+    }
+
+    print(values_sum)
+}

@@ -1,0 +1,21 @@
+# Maps: literals, field access, len/get/set, GC interplay.
+let user = {name: "Ada", score: 95}
+print(user.name)
+print(user.score)
+user.set("score", 100)
+print(user.score)
+print(user.get("name"))
+print(user.len())
+
+let mut i = 0
+let mut total = 0
+while i < 50 {
+    let m = {n: i, tag: "v"}
+    total = total + m.n
+    i = i + 1
+}
+print(total)
+
+let config = {host: "localhost", port: 8080}
+print(config.host)
+print(config.port)
