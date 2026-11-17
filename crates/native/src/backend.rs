@@ -35,6 +35,13 @@ const RT_CONCAT: &str = "lut_rt_concat";
 const RT_STR_EQ: &str = "lut_rt_str_eq";
 const RT_PANIC_DIV0: &str = "lut_rt_panic_div0";
 const RT_PANIC_OVF: &str = "lut_rt_panic_overflow";
+const RT_GUI_WINDOW: &str = "lut_rt_gui_window";
+const RT_GUI_LABEL: &str = "lut_rt_gui_label";
+const RT_GUI_INPUT: &str = "lut_rt_gui_input";
+const RT_GUI_BUTTON: &str = "lut_rt_gui_button";
+const RT_GUI_SET_TEXT: &str = "lut_rt_gui_set_text";
+const RT_GUI_RUN: &str = "lut_rt_gui_run";
+const RT_GUI_CLOSE: &str = "lut_rt_gui_close";
 
 #[derive(Debug)]
 pub struct NativeError(pub String);
@@ -76,6 +83,13 @@ fn check_supported(ir: &IrModule) -> Result<(), NativeError> {
         for b in &f.blocks {
             for instr in &b.instrs {
                 match instr {
+                    IrInstr::Builtin { kind, .. }
+                        if matches!(
+                            kind,
+                            lu_vm::bytecode::BuiltinKind::GuiWindow
+                                | lu_vm::bytecode::BuiltinKind::GuiRun
+                                | lu_vm::bytecode::BuiltinKind::GuiClose
+                        ) => {}
                     IrInstr::Builtin { kind, .. } => {
                         return Err(NativeError(format!(
                             "function `{}` uses the built-in `{}`, which the native backend does not support yet; run with the bytecode VM instead",
@@ -159,6 +173,54 @@ impl<'m> Backend<'m> {
             (RT_STR_EQ, &[types::I64, types::I64], &[types::I8]),
             (RT_PANIC_DIV0, &[], &[]),
             (RT_PANIC_OVF, &[types::I32], &[]),
+            (
+                RT_GUI_WINDOW,
+                &[types::I64, types::I64, types::I64],
+                &[types::I64],
+            ),
+            (
+                RT_GUI_LABEL,
+                &[
+                    types::I64,
+                    types::I64,
+                    types::I64,
+                    types::I64,
+                    types::I64,
+                    types::I64,
+                    types::I64,
+                ],
+                &[types::I64],
+            ),
+            (
+                RT_GUI_INPUT,
+                &[
+                    types::I64,
+                    types::I64,
+                    types::I64,
+                    types::I64,
+                    types::I64,
+                    types::I64,
+                    types::I64,
+                ],
+                &[types::I64],
+            ),
+            (
+                RT_GUI_BUTTON,
+                &[
+                    types::I64,
+                    types::I64,
+                    types::I64,
+                    types::I64,
+                    types::I64,
+                    types::I64,
+                    types::I64,
+                    types::I64,
+                ],
+                &[types::I64],
+            ),
+            (RT_GUI_SET_TEXT, &[types::I64, types::I64], &[]),
+            (RT_GUI_RUN, &[types::I64], &[]),
+            (RT_GUI_CLOSE, &[types::I64], &[]),
         ];
         for (name, params, results) in rt_sigs {
             let mut sig = module.make_signature();
@@ -386,11 +448,38 @@ impl<'a> FnTranslator<'a> {
                 let v = self.load(builder, *src);
                 self.store(builder, *dst, v);
             }
-            IrInstr::Builtin { kind, .. } => {
-                return Err(format!(
-                    "builtin `{}` reached the native backend (internal error: check_supported should have rejected the module)",
-                    kind.name()
-                ));
+            IrInstr::Builtin { kind, args, dst } => {
+                let runtime = match kind {
+                    lu_vm::bytecode::BuiltinKind::GuiWindow => RT_GUI_WINDOW,
+                    lu_vm::bytecode::BuiltinKind::GuiLabel => RT_GUI_LABEL,
+                    lu_vm::bytecode::BuiltinKind::GuiSetText => RT_GUI_SET_TEXT,
+                    lu_vm::bytecode::BuiltinKind::GuiRun => RT_GUI_RUN,
+                    lu_vm::bytecode::BuiltinKind::GuiClose => RT_GUI_CLOSE,
+                    _ => return Err(format!("unsupported native builtin `{}`", kind.name())),
+                };
+                let fref = module.declare_func_in_func(rt[runtime], builder.func);
+                let argv: Vec<Value> = args.iter().map(|a| self.load(builder, *a)).collect();
+                let call = builder.ins().call(fref, &argv);
+                let result = if builder.inst_results(call).is_empty() {
+                    builder.ins().iconst(types::I8, 0)
+                } else {
+                    builder.inst_results(call)[0]
+                };
+                self.store(builder, *dst, result);
+            }
+            IrInstr::GuiButton { args, handler, dst } => {
+                if args.len() != 7 {
+                    return Err(format!(
+                        "gui_button IR expected 7 arguments, found {}",
+                        args.len()
+                    ));
+                }
+                let mut argv: Vec<Value> = args.iter().map(|a| self.load(builder, *a)).collect();
+                let callback = module.declare_func_in_func(func_ids[*handler], builder.func);
+                argv.push(builder.ins().func_addr(types::I64, callback));
+                let fref = module.declare_func_in_func(rt[RT_GUI_BUTTON], builder.func);
+                let call = builder.ins().call(fref, &argv);
+                self.store(builder, *dst, builder.inst_results(call)[0]);
             }
             IrInstr::Bin { op, ty, a, b, dst } => {
                 let av = self.load(builder, *a);

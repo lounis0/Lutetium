@@ -7,7 +7,7 @@ top_item      = function | statement ;
 function      = "fn" , IDENT , "(" , [ params ] , ")" , [ "->" , type ] , block ;
 params        = param , { "," , param } ;
 param         = IDENT , [ ":" , type ] ;
-type          = "int" | "float" | "bool" | "str" | "unit" ;
+type          = "int" | "float" | "bool" | "str" | "unit" | "window" | "widget" ;
 
 block         = "{" , { statement } , "}" ;
 
@@ -64,4 +64,7 @@ if_expr       = "if" , expr , block , "else" , ( if_expr | block ) ;
      against the literal's keys (E3010), at most 127 entries (E3016)
    - built-in free functions: sqrt pow floor ceil round log sin cos tan
      (float), abs min max (overloaded int/float), read_text write_text
-     file_exists (fs) *)
+     file_exists (fs)
+   - `window` and `widget` are opaque native ION handles; the verified ION
+     surface and its Windows-only restrictions are documented in
+     LANGUAGE_SPEC.md *)

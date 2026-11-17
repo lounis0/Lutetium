@@ -1,148 +1,133 @@
-# Lutetium architecture (observed implementation)
+# Lutetium architecture — source-verified snapshot
 
-**Snapshot:** 2026-11-12 working tree, package 0.4.1. This document describes existing source. GUI portions labelled “incomplete” are only observed scaffolding, not an executable subsystem.
+**Project version:** 0.4.1. **Target verified in this snapshot:** Windows x86_64 GNU. The repository was on branch `main` at base commit `1f86307` when this maintenance pass began; implementation changes were uncommitted then. This report describes the reviewed source state, not a claim of cross-platform or production readiness.
 
-## 1. Crate dependency architecture
+## 1. Crate architecture
 
 ```mermaid
 flowchart TD
   diag[lu-diagnostics]
   syntax[lu-syntax]
-  vm[lu-vm: bytecode + verifier + VM + GC]
-  compiler[lu-compiler: resolve/typecheck/IR/lower/opt/codegen]
+  vm[lu-vm: LTBC + verifier + register VM + GC]
+  compiler[lu-compiler: resolver/typecheck/IR/lowering/optimizer/codegen]
   native[lu-native: Cranelift + COFF + linker]
-  cli[lutetium-cli: library + binary]
-  runtime[lu-runtime staticlib source]
+  cli[lutetium-cli]
+  runtime[crates/runtime staticlib source]
   syntax --> diag
   compiler --> syntax
   compiler --> diag
   compiler --> vm
   native --> compiler
+  native --> vm
   cli --> compiler
   cli --> vm
   cli --> native
-  native -. build.rs runs rustc on .-> runtime
+  native -. build.rs compiles and embeds .-> runtime
 ```
 
-The VM crate does not depend on the compiler. `lu-runtime` is not a workspace member and has no Cargo dependencies; `crates/native/build.rs` compiles its single source file directly via `rustc --crate-type staticlib` and `include_bytes!` embeds it. The graph does not show OS tools: Windows native executable linking requires rustup's bundled GNU MinGW driver/libs.
+`crates/runtime` is outside the Cargo workspace. `crates/native/build.rs`
+invokes `rustc --crate-type staticlib` on its source and embeds the archive in
+the native crate. Generated executables link that runtime; they do not require
+the compiler or source tree at execution.
 
-## 2. Source-to-executable pipelines
+## 2. Source pipelines
 
-```mermaid
-flowchart LR
-  src[.lu source] --> lex[lex: tokens + spans]
-  lex --> parse[recursive descent: Module AST]
-  parse --> resolve[function signatures + entry checks]
-  resolve --> check[scopes + inference + type diagnostics]
-  check --> lower[typed AST to register/basic-block IR]
-  lower --> opt[optimizer O0-O2; O3 currently aliases O2]
-  opt --> bcgen[bytecode codegen]
-  bcgen --> module[LTBC container v5]
-  module --> verify[lu-vm verifier]
-  verify --> run[register VM]
-  opt --> clif[Cranelift translator]
-  clif --> coff[COFF object]
-  coff --> link[MinGW driver + crt2.o + static runtime]
-  link --> exe[Windows console .exe]
-  opt -. GUI IR incomplete; native translator does not handle GuiButton .-> gui[no working GUI .exe path]
+```text
+.lu -> lex -> parse/AST -> resolve -> type check/inference
+    -> typed register IR -> optimizer (O0–O2; O3 currently aliases O2)
+        -> bytecode codegen -> LTBC v5 -> verifier -> register VM
+        -> Cranelift -> COFF -> bundled MinGW linker + runtime
+             -> Windows console executable (`--target native`)
+             -> Windows GUI-subsystem executable (`--target gui`)
 ```
 
-`compile_ir_with_opts` stops at typed IR; `compile_source` bytecode-generates. CLI `run` verifies bytecode before VM execution. Bytecode `build` verifies before serialize. Native build compiles from IR and skips bytecode generation/verifier, relying on compiler IR validity. Existing console native backend emits a `main` symbol and links console subsystem. A helper `build_gui_exe` and linker `--subsystem,windows` exist, but the CLI has no GUI build target, current IR is non-exhaustive in backend, and runtime has no implementation of GUI imports/events.
+CLI `run` compiles to bytecode, verifies, then executes it. Bytecode `build`
+verifies before serialization. Console and GUI native targets compile typed IR
+directly and rely on compiler IR invariants plus backend feature checks; they
+do not pass through bytecode verification.
 
-## 3. VM lifecycle and call mechanics
+## 3. Frontend and compiler
 
-```mermaid
-sequenceDiagram
-  participant CLI
-  participant Compiler
-  participant Verifier
-  participant VM
-  participant Heap
-  CLI->>Compiler: lex/parse/resolve/typecheck/lower/codegen
-  Compiler-->>CLI: BytecodeModule
-  CLI->>Verifier: verify(module)
-  Verifier-->>CLI: success or E4002
-  CLI->>VM: run_with_options(module, output sink, options)
-  VM->>VM: create entry Frame, nregs Uninit registers
-  loop instruction dispatch
-    VM->>VM: decode opcode operands and execute
-    opt CALL
-      VM->>VM: copy args to new Frame registers; cap depth at 1024
-      VM->>VM: RET writes result to caller destination and resumes
-    end
-    opt allocation builtin
-      VM->>Heap: collect roots from all frame registers when thresholds/stress require
-      Heap-->>VM: allocation / updated counters
-    end
-    opt PRINT
-      VM-->>CLI: formatted value with newline
-    end
-  end
-  VM-->>CLI: Value + GcStats or VmError(E5001-E5009)
-```
+The lexer/parser build the owned AST with source spans. The resolver validates
+top-level function names and entry-point rules. The type checker handles
+scopes, inference, control flow, numeric widening (int to float), homogeneous
+lists, record-style maps and builtins. The shared typed IR is register-based
+with explicit blocks and terminators. The lowering and optimizer feed both
+backends.
 
-The VM is a register machine, not a bytecode operand-stack VM. Frames hold current function index, instruction pointer, return destination/IP, and registers. The bytecode runtime is independent of the frontend. `verify` checks opcode shapes, operand ranges, constants/calls/builtin arities, branch targets and register definitions. It does not perform full static type validation of arbitrary hand-crafted bytecode; VM checks runtime value kinds and returns errors.
+The language and API contract is documented in `docs/LANGUAGE_SPEC.md` and
+`docs/STANDARD_LIBRARY.md`. Notable limits include no modules/imports,
+closures, structs/enums, or heterogeneous list values.
 
-## 4. Memory / collector
+## 4. Bytecode, verifier, VM and GC
 
-```mermaid
-flowchart TD
-  regs[All live frame register Vec<Value>] --> mark[Root mark]
-  old[Old remembered slots] --> mark_young[Minor GC traces young children]
-  mark --> queue[worklist of Ref handles]
-  queue --> children[List/Map child values]
-  children --> queue
-  queue --> sweep[young sweep]
-  sweep --> dead[unmarked: free slot + account bytes]
-  sweep --> survive[marked: reset mark, age++]
-  survive --> promote[age >= 2 -> Old]
-  mutate[old List/Map mutation] --> barrier[write_barrier(slot)]
-  barrier --> old
-  roots[Roots] --> full[Major GC: trace both generations]
-  children --> full
-  full --> sweep_all[sweep both; revalidate remembered set]
-```
+LTBC v5 has a magic/version header, constants, function records and entry
+function name. Operands are fixed-width little-endian. The decoder requires an
+exact version match. `docs/BYTECODE_FORMAT.md` describes the current encoding
+and version history.
 
-`Heap` stores `Obj::List(Vec<Value>)` and insertion-ordered `Obj::Map(Vec<(Value,Value)>)` in indexed slots, with `Ref=u32`; strings are `Rc<str>` and are not traced. Default thresholds: young 1024, old 8192; stress mode requests minor collection at each `maybe_collect`. Collection call sites are currently allocation builtins in VM. Lists/maps are mutable and alias-visible. Approximate object byte stats count internal vector estimates, exclude allocator/vector capacity and external string payload. Minor and major tests exist.
+The verifier checks opcode shapes, operand and index bounds, call/builtin
+arities, branch ranges, reachable control flow and reads-before-write along
+its explored dataflow. The register definition merge is union-based, not a
+must-analysis; the VM initializes registers to an uninitialized sentinel and
+reports a runtime error if it is read.
 
-## 5. Native runtime and linker
+The VM is a register machine with per-call-frame registers, a recursion limit,
+scalar values, builtins, mutable lists/maps and a precise generational tracing
+collector. Heap roots are the registers in all live VM frames. List/map
+mutation uses a write barrier. GUI bytecode builtins return an explicit
+unavailable error; GUI support is native-only.
 
-```mermaid
-flowchart LR
-  IR[typed IR] --> check[check_supported feature gate]
-  check --> translator[FnTranslator: Cranelift FunctionBuilder]
-  translator --> imports[imports: lut_rt_print_*, concat, str_eq, panic_*]
-  imports --> archive[embedded lu-runtime staticlib]
-  translator --> obj[Cranelift ObjectModule -> COFF bytes]
-  archive --> driver
-  obj --> driver[Windows x64 GNU MinGW wrapper + crt2.o + libraries]
-  driver --> console[console subsystem executable]
-  driver -. helper can choose Windows subsystem, no call sites with functioning UI .-> gui[GUI-subsystem PE is not evidence of GUI]
-  runtime[crates/runtime] --> win32[kernel32 stdout/heap/ExitProcess]
-  gui_decl[unused Win32 declarations in runtime] -. no implementations .-> win32
-```
+## 5. Native Windows x64 GNU backend
 
-Native supported IR values in practice: int i64, float f64, bool i8, str pointer to `[u64 byte length][UTF-8 bytes]`, unit dummy/no return. Calls are WindowsFastcall. Literals are read-only data, concatenation uses `HeapAlloc`, string comparison runtime. Integer overflow/div-by-zero branches to panic runtime. The static runtime currently links with console behavior; no allocations are reclaimed. Linker always uses `x86_64-pc-windows-gnu` rustup sysroot MinGW and `crt2.o`; console `link_exe` adds `--subsystem,console`; `link_gui_exe` adds `--subsystem,windows` plus `-luser32 -lgdi32`.
+The Cranelift backend emits WindowsFastcall functions and COFF objects. The
+linker uses the self-contained MinGW-w64 toolchain bundled with the configured
+rustup Windows GNU target. The native runtime provides scalar printing,
+string operations and checked-arithmetic panic exits. Native mode rejects
+unsupported list/map values and builtin operations with E6002. Native string
+concatenation allocates with the process heap and is not reclaimed. The CLI's
+`--release` flag does not currently alter generated Cranelift optimization
+settings.
 
-## 6. GUI integration points and gaps
+Native executable generation is configured/tested only for
+`x86_64-pc-windows-gnu`. No other host/architecture target is claimed.
 
-```mermaid
-flowchart TD
-  type[AST TypeKind Window/Widget] --> bcty[BcTy Window/Widget tags]
-  bcty --> irty[IR Ty Window/Widget pointer-sized Cranelift mapping]
-  srcbuiltins[BuiltInKind GUI identifiers/signatures] --> checker[typecheck partial checks]
-  checker --> typed[GuiButton/GuiCallback TExpr]
-  typed --> lower[partial lowering]
-  lower --> guiIR[IrInstr::GuiButton + Builtin callback ids]
-  guiIR --> codegen[bytecode codegen uses unreachable! for GuiButton]
-  guiIR --> nativeBackend[native translator match missing GuiButton: compiler error]
-  built[unused extern declarations / structs / constants in runtime] -. no WndProc or API calls .-> APIs[Win32]
-  link[GUI subsystem link helper] -. separate PE subsystem only .-> exe[no verified GUI exe]
-  vm[VM GUI Builtins] --> error[returns unavailable runtime error]
-```
+## 6. Experimental ION GUI slice
 
-There is no `std/ui`, reusable component representation, rendering command protocol, layout calculation, state model, focus/event abstraction, text/shape renderer, D2D/DWrite/DWM integration, DPI-awareness setup, mouse/keyboard event dispatch, callback trampoline, handle cleanup, or GUI test/example. `RegisterClassExW`, `CreateWindowExW`, `DefWindowProcW`, `GetMessageW`, `TranslateMessage`, `DispatchMessageW`, `PostQuitMessage` and supporting types are declarations only in `crates/runtime/src/lib.rs`; grep/source inspection found no implementation calls. The GUI identifiers are in `BuiltinKind::function_name_of`, but some GUI methods are not yet handled in checker and `function_name()` does not enumerate them; signatures are not all semantically consistent (see known issues). This is incomplete scaffolding and actively contributes to current build failure.
+Only the following native GUI operations are supported and documented:
 
-## 7. Language-to-native machine code
+- `gui_window(title, width, height)` creates a Win32 top-level window.
+- `gui_button(window, id, text, x, y, width, height, handler)` creates a
+  standard Win32 push button.
+- `gui_run(window)` shows the window and runs the thread's Win32 message loop.
+- `gui_close(window)` destroys the window.
 
-The compiler does not parse into bytecode and JIT it. It produces shared typed IR; native lowering translates each IR basic block to Cranelift blocks, maps Lutetium registers to Cranelift variables, emits primitive machine-level operations and imported runtime calls, writes COFF object bytes, then a separate link process builds a PE executable. The build target is fixed by `.cargo/config.toml` and `target_isa()` to x86_64 Windows GNU. There is no Linux/macOS/ARM native path. `--release` on Lutetium CLI is a reporting/accepted flag for this generated build; the `build_native` body does not alter Cranelift optimization settings based on it. Cargo release profile affects building the compiler, not the language program's native compiler optimization level.
+The source-level handler must be a statically named Lutetium function taking
+one `window` and returning `unit`. Cranelift passes its function address using
+the Windows x64 ABI. The runtime maps `(parent HWND, child HWND)` to that
+callback; a `WM_COMMAND/BN_CLICKED` message identifies the actual notifying
+button by `lParam`. The callback is invoked after releasing the registry lock,
+so it may destroy its parent.
+
+The native integration test builds and launches a GUI-subsystem executable,
+checks its PE subsystem field, finds two native buttons that intentionally
+share one 16-bit ID, sends `BM_CLICK` to each, and confirms the correct
+callback behavior and clean process exit. This validates the control
+notification/callback path, not physical mouse input. Other controls and GUI
+builtin names remain scaffolding unless separately tested and documented.
+
+This is a single-window/single-message-loop prototype. `WM_DESTROY` posts
+thread-wide `WM_QUIT`; independent simultaneous window loops are not
+implemented. IDs are clamped to the Win32 16-bit range, so callers should use
+unique in-range IDs. The callback registry distinguishes HWNDs despite
+colliding IDs, but other Win32 ID-based behavior may still collide. Other GUI
+builtin names in shared metadata/backend/runtime are scaffolding, not API.
+There is no custom renderer, layout engine, keyboard events, reactive UI
+state, DPI-aware coordinates, or general component framework.
+
+## 7. CLI commands
+
+`lutetium` implements `run`, `check`, `build`, `inspect`, `explain`, `help`
+and version reporting. `build` supports `bytecode`, `native`, and `gui`
+targets. `gui` emits an executable; it does not launch the app. See the README
+and CLI source for exact argument forms.

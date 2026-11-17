@@ -329,7 +329,11 @@ pub enum TExpr {
         args: Vec<TExpr>,
         handler: usize,
     },
-    GuiCallback { kind: BuiltinKind, args: Vec<TExpr>, callback: usize },
+    GuiCallback {
+        kind: BuiltinKind,
+        args: Vec<TExpr>,
+        callback: usize,
+    },
 }
 
 #[derive(Debug, Clone)]
@@ -1932,16 +1936,43 @@ impl<'a> FnCx<'a> {
                 args,
                 span,
             } => {
-                if let Some(kind) = BuiltinKind::function_name_of(callee).filter(|kind| matches!(kind, BuiltinKind::GuiOnClick | BuiltinKind::GuiOnKey | BuiltinKind::GuiKeyHandler)) {
-                    let expected_argc = if kind == BuiltinKind::GuiKeyHandler { 3 } else { 2 };
+                if let Some(kind) = BuiltinKind::function_name_of(callee).filter(|kind| {
+                    matches!(
+                        kind,
+                        BuiltinKind::GuiOnClick
+                            | BuiltinKind::GuiOnKey
+                            | BuiltinKind::GuiKeyHandler
+                    )
+                }) {
+                    let expected_argc = if kind == BuiltinKind::GuiKeyHandler {
+                        3
+                    } else {
+                        2
+                    };
                     if args.len() != expected_argc {
-                        self.hint_err("E3007", *span, format!("`{}` expects {} arguments, found {}", callee, expected_argc, args.len()), "pass the window, an optional key code, and a named handler".into());
-                        for arg in args { let _ = self.check_expr(arg); }
+                        self.hint_err(
+                            "E3007",
+                            *span,
+                            format!(
+                                "`{}` expects {} arguments, found {}",
+                                callee,
+                                expected_argc,
+                                args.len()
+                            ),
+                            "pass the window, an optional key code, and a named handler".into(),
+                        );
+                        for arg in args {
+                            let _ = self.check_expr(arg);
+                        }
                         return TExpr::Bool(false);
                     }
                     let window = self.check_expr(&args[0]);
                     if castable(texpr_ty(&window), cty_of(BcTy::Window)).is_none() {
-                        self.err("E3001", args[0].span(), "GUI callback registration requires a window".into());
+                        self.err(
+                            "E3001",
+                            args[0].span(),
+                            "GUI callback registration requires a window".into(),
+                        );
                     }
                     let mut cb_index = 1;
                     let mut checked = vec![window];
@@ -1955,58 +1986,123 @@ impl<'a> FnCx<'a> {
                     }
                     let callback_name = match &args[cb_index] {
                         Expr::Ident(name, _) => name,
-                        other => { self.err("E3001", other.span(), "GUI callback must name a Lutetium function".into()); return TExpr::Bool(false); }
-                    };
-                    let Some(callback) = self.sigs.iter().position(|sig| sig.name == *callback_name) else {
-                        self.err("E3006", args[cb_index].span(), format!("unknown GUI callback `{}`", callback_name));
-                        return TExpr::Bool(false);
-                    };
-                    let callback_sig = &self.sigs[callback];
-                    if callback_sig.params != vec![Some(BcTy::Widget)] || callback_sig.ret != Some(BcTy::Unit) {
-                        self.err("E3001", args[cb_index].span(), format!("GUI callback `{}` must have signature `fn {}(widget) -> unit`", callback_name, callback_name));
-                    }
-                    return TExpr::GuiCallback { kind, args: checked, callback };
-                }
-                if callee == "gui_button" {
-                    if args.len() != 7 {
-                        self.hint_err(
-                            "E3007",
-                            *span,
-                            format!("`gui_button` expects 7 arguments, found {}", args.len()),
-                            "pass window, button id, caption, x, y, width, and height".into(),
-                        );
-                        for arg in args { let _ = self.check_expr(arg); }
-                        return TExpr::Bool(false);
-                    }
-                    let mut checked = Vec::with_capacity(6);
-                    let expected = [
-                        cty_of(BcTy::Window), cty_of(BcTy::Int), cty_of(BcTy::Str),
-                        cty_of(BcTy::Int), cty_of(BcTy::Int), cty_of(BcTy::Int),
-                    ];
-                    for (i, (arg, want)) in args[..6].iter().zip(expected).enumerate() {
-                        let value = self.check_expr(arg);
-                        let got = texpr_ty(&value);
-                        if castable(got.clone(), want.clone()).is_none() {
-                            self.err("E3001", arg.span(), format!("argument {} of `gui_button`: expected `{}`, found `{}`", i + 1, want.name(), got.name()));
-                        }
-                        checked.push(value);
-                    }
-                    let handler_name = match &args[6] {
-                        Expr::Ident(name, _) => name,
                         other => {
-                            self.err("E3001", other.span(), "gui_button handler must be a named Lutetium function".into());
+                            self.err(
+                                "E3001",
+                                other.span(),
+                                "GUI callback must name a Lutetium function".into(),
+                            );
                             return TExpr::Bool(false);
                         }
                     };
-                    let Some(handler) = self.sigs.iter().position(|sig| sig.name == *handler_name) else {
-                        self.err("E3006", args[6].span(), format!("unknown GUI handler `{}`", handler_name));
+                    let Some(callback) =
+                        self.sigs.iter().position(|sig| sig.name == *callback_name)
+                    else {
+                        self.err(
+                            "E3006",
+                            args[cb_index].span(),
+                            format!("unknown GUI callback `{}`", callback_name),
+                        );
+                        return TExpr::Bool(false);
+                    };
+                    let callback_sig = &self.sigs[callback];
+                    let callback_ret = callback_sig
+                        .ret
+                        .map(cty_of)
+                        .unwrap_or_else(|| self.state[callback].ret.clone());
+                    if callback_sig.params != vec![Some(BcTy::Window)]
+                        || (callback_ret != CTy::Unknown && callback_ret != cty_of(BcTy::Unit))
+                    {
+                        self.err(
+                            "E3001",
+                            args[cb_index].span(),
+                            format!(
+                                "GUI callback `{}` must have signature `fn {}(window: window) -> unit`",
+                                callback_name, callback_name
+                            ),
+                        );
+                    }
+                    return TExpr::GuiCallback {
+                        kind,
+                        args: checked,
+                        callback,
+                    };
+                }
+                if callee == "gui_button" {
+                    if args.len() != 8 {
+                        self.hint_err(
+                            "E3007",
+                            *span,
+                            format!("`gui_button` expects 8 arguments, found {}", args.len()),
+                            "pass window, button id, caption, x, y, width, height, and handler"
+                                .into(),
+                        );
+                        for arg in args {
+                            let _ = self.check_expr(arg);
+                        }
+                        return TExpr::Bool(false);
+                    }
+                    let mut checked = Vec::with_capacity(7);
+                    let expected = [
+                        cty_of(BcTy::Window),
+                        cty_of(BcTy::Int),
+                        cty_of(BcTy::Str),
+                        cty_of(BcTy::Int),
+                        cty_of(BcTy::Int),
+                        cty_of(BcTy::Int),
+                        cty_of(BcTy::Int),
+                    ];
+                    for (i, (arg, want)) in args[..7].iter().zip(expected).enumerate() {
+                        let value = self.check_expr(arg);
+                        let got = texpr_ty(&value);
+                        if castable(got.clone(), want.clone()).is_none() {
+                            self.err(
+                                "E3001",
+                                arg.span(),
+                                format!(
+                                    "argument {} of `gui_button`: expected `{}`, found `{}`",
+                                    i + 1,
+                                    want.name(),
+                                    got.name()
+                                ),
+                            );
+                        }
+                        checked.push(value);
+                    }
+                    let handler_name = match &args[7] {
+                        Expr::Ident(name, _) => name,
+                        other => {
+                            self.err(
+                                "E3001",
+                                other.span(),
+                                "gui_button handler must be a named Lutetium function".into(),
+                            );
+                            return TExpr::Bool(false);
+                        }
+                    };
+                    let Some(handler) = self.sigs.iter().position(|sig| sig.name == *handler_name)
+                    else {
+                        self.err(
+                            "E3006",
+                            args[7].span(),
+                            format!("unknown GUI handler `{}`", handler_name),
+                        );
                         return TExpr::Bool(false);
                     };
                     let sig = &self.sigs[handler];
-                    if sig.params != vec![Some(BcTy::Widget)] || sig.ret != Some(BcTy::Unit) {
-                        self.err("E3001", args[6].span(), format!("GUI handler `{}` must have signature `fn {}(context: widget) -> unit`", handler_name, handler_name));
+                    let handler_ret = sig
+                        .ret
+                        .map(cty_of)
+                        .unwrap_or_else(|| self.state[handler].ret.clone());
+                    if sig.params != vec![Some(BcTy::Window)]
+                        || (handler_ret != CTy::Unknown && handler_ret != cty_of(BcTy::Unit))
+                    {
+                        self.err("E3001", args[7].span(), format!("GUI handler `{}` must have signature `fn {}(window: window) -> unit`", handler_name, handler_name));
                     }
-                    return TExpr::GuiButton { args: checked, handler };
+                    return TExpr::GuiButton {
+                        args: checked,
+                        handler,
+                    };
                 }
                 if callee == "print" {
                     if args.len() != 1 {
@@ -2091,10 +2187,32 @@ impl<'a> FnCx<'a> {
                                     vec![cty_of(BcTy::Str), cty_of(BcTy::Str)]
                                 }
                                 BuiltinKind::FileExists => vec![cty_of(BcTy::Str)],
-                                BuiltinKind::GuiWindow => vec![cty_of(BcTy::Str), cty_of(BcTy::Int), cty_of(BcTy::Int)],
-                                BuiltinKind::GuiLabel | BuiltinKind::GuiInput => vec![cty_of(BcTy::Window), cty_of(BcTy::Str), cty_of(BcTy::Int), cty_of(BcTy::Int), cty_of(BcTy::Int), cty_of(BcTy::Int)],
-                                BuiltinKind::GuiSetText => vec![cty_of(BcTy::Widget), cty_of(BcTy::Str)],
-                                BuiltinKind::GuiRun | BuiltinKind::GuiClose => vec![cty_of(BcTy::Window)],
+                                BuiltinKind::GuiWindow => {
+                                    vec![cty_of(BcTy::Str), cty_of(BcTy::Int), cty_of(BcTy::Int)]
+                                }
+                                BuiltinKind::GuiLabel | BuiltinKind::GuiInput => vec![
+                                    cty_of(BcTy::Window),
+                                    cty_of(BcTy::Str),
+                                    cty_of(BcTy::Int),
+                                    cty_of(BcTy::Int),
+                                    cty_of(BcTy::Int),
+                                    cty_of(BcTy::Int),
+                                ],
+                                BuiltinKind::GuiButton => vec![
+                                    cty_of(BcTy::Window),
+                                    cty_of(BcTy::Int),
+                                    cty_of(BcTy::Str),
+                                    cty_of(BcTy::Int),
+                                    cty_of(BcTy::Int),
+                                    cty_of(BcTy::Int),
+                                    cty_of(BcTy::Int),
+                                ],
+                                BuiltinKind::GuiSetText => {
+                                    vec![cty_of(BcTy::Widget), cty_of(BcTy::Str)]
+                                }
+                                BuiltinKind::GuiRun | BuiltinKind::GuiClose => {
+                                    vec![cty_of(BcTy::Window)]
+                                }
                                 _ => vec![],
                             };
                             for (i, t) in targs.iter().enumerate() {
@@ -2136,8 +2254,12 @@ impl<'a> FnCx<'a> {
                                 BuiltinKind::WriteText => cty_of(BcTy::Unit),
                                 BuiltinKind::FileExists => cty_of(BcTy::Bool),
                                 BuiltinKind::GuiWindow => cty_of(BcTy::Window),
-                                BuiltinKind::GuiLabel | BuiltinKind::GuiInput => cty_of(BcTy::Widget),
-                                BuiltinKind::GuiSetText | BuiltinKind::GuiRun | BuiltinKind::GuiClose => cty_of(BcTy::Unit),
+                                BuiltinKind::GuiLabel
+                                | BuiltinKind::GuiInput
+                                | BuiltinKind::GuiButton => cty_of(BcTy::Widget),
+                                BuiltinKind::GuiSetText
+                                | BuiltinKind::GuiRun
+                                | BuiltinKind::GuiClose => cty_of(BcTy::Unit),
                                 _ => CTy::Unknown,
                             };
                             return TExpr::Builtin {

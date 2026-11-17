@@ -1,0 +1,10 @@
+# Minimal Lutetium ION native GUI: clicking the button closes its window.
+fn on_click(window: window) {
+    gui_close(window)
+}
+
+fn main() {
+    let window = gui_window("Lutetium ION", 480, 320)
+    gui_button(window, 1, "Click to close", 24, 24, 160, 40, on_click)
+    gui_run(window)
+}

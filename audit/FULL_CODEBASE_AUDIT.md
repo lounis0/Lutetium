@@ -1,6 +1,8 @@
-# Lutetium full codebase technical audit
+# Historical Lutetium full codebase technical audit
 
-**Audit date:** 2026-11-12 (working tree snapshot). **Scope:** source/config/docs/tests/examples/generated distribution inspected; no code implementation or feature changes performed after the audit-only instruction. **Important working-tree note:** the environment says the project directory is not a Git repository. `git status --short` returned `fatal: not a git repository`; therefore no commit or pre-existing/uncommitted-change distinction can be verified. Earlier in this thread, before the audit-only request, partial GUI changes had already been made and a helper was added to a compiler test; those are audited as part of the current tree and preserved.
+> **Historical snapshot, superseded.** This report describes an earlier pre-GUI working-tree state and is retained for provenance only. It is not current project status: since then the Windows ION prototype was implemented and verified, Git state was established, and current results/inventory are in [`CURRENT_WORKTREE_AUDIT.md`](CURRENT_WORKTREE_AUDIT.md), [`ARCHITECTURE.md`](ARCHITECTURE.md), [`KNOWN_ISSUES.md`](KNOWN_ISSUES.md), and [`TEST_RESULTS.md`](TEST_RESULTS.md). Do not use the stale capability claims below as current facts.
+
+**Original audit date:** 2026-11-12 (working tree snapshot). The original environment reported the project directory was not a Git repository; that statement is historical and no longer current.
 
 Companion reports:
 

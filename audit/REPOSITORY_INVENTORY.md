@@ -1,6 +1,8 @@
-# Lutetium repository inventory
+# Historical Lutetium repository inventory
 
-**Snapshot:** repository inspected 2026-11-12; release-preparation updates performed afterward. This directory did not contain `.git` when inspected, so no commit provenance or prior tracked/untracked state was available. The six files in `audit/` are the authoritative current audit set.
+> **Historical snapshot, superseded.** This inventory and its pre-GUI capability/test claims predate the currently verified ION implementation. Current status and changed-file inventory are in [`CURRENT_WORKTREE_AUDIT.md`](CURRENT_WORKTREE_AUDIT.md), with current architecture/issues/results in the companion audit files. The original statement that the directory had no Git metadata is no longer current.
+
+**Original snapshot:** repository inspected 2026-11-12; release-preparation updates performed afterward.
 
 ## Root files
 

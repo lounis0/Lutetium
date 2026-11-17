@@ -112,7 +112,11 @@ pub enum IrInstr {
         dst: u16,
     },
     /// Native-only button with a statically resolved Lutetium callback.
-    GuiButton { args: Vec<u16>, handler: usize, dst: u16 },
+    GuiButton {
+        args: Vec<u16>,
+        handler: usize,
+        dst: u16,
+    },
     Print {
         src: u16,
         ty: Ty,
@@ -231,7 +235,9 @@ fn instr_text(i: &IrInstr) -> String {
                 .join(", ");
             format!("builtin {} ({}) -> r{}", kind.name(), args_s, dst)
         }
-        IrInstr::GuiButton { args, handler, dst } => format!("gui_button {:?}, handler #{} -> r{}", args, handler, dst),
+        IrInstr::GuiButton { args, handler, dst } => {
+            format!("gui_button {:?}, handler #{} -> r{}", args, handler, dst)
+        }
         IrInstr::Print { src, ty } => format!("print{} r{}", ty_name(ty), src),
     }
 }

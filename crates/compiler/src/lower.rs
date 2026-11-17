@@ -766,16 +766,27 @@ impl FnLower {
                 });
                 d
             }
-            TExpr::GuiCallback { kind, args, callback } => {
+            TExpr::GuiCallback {
+                kind,
+                args,
+                callback,
+            } => {
                 let regs: Vec<u16> = args.iter().map(|arg| self.lower_expr(arg)).collect();
                 let cb = self.temp();
                 self.def_ty(cb, Ty::Int);
-                self.emit(IrInstr::Const { v: Const::Int(*callback as i64), dst: cb });
+                self.emit(IrInstr::Const {
+                    v: Const::Int(*callback as i64),
+                    dst: cb,
+                });
                 let mut args = regs;
                 args.push(cb);
                 let dst = self.temp();
                 self.def_ty(dst, Ty::Unit);
-                self.emit(IrInstr::Builtin { kind: *kind, args, dst });
+                self.emit(IrInstr::Builtin {
+                    kind: *kind,
+                    args,
+                    dst,
+                });
                 dst
             }
             TExpr::GuiButton { args, handler } => {
@@ -783,14 +794,13 @@ impl FnLower {
                 for arg in args {
                     regs.push(self.lower_expr(arg));
                 }
-                let handler_ref = self.temp();
-                self.def_ty(handler_ref, Ty::Int);
-                self.emit(IrInstr::Const { v: Const::Int(*handler as i64), dst: handler_ref });
-                regs.push(handler_ref);
                 let dst = self.temp();
                 self.def_ty(dst, Ty::Widget);
-                regs.pop();
-                self.emit(IrInstr::GuiButton { args: regs, handler: *handler, dst });
+                self.emit(IrInstr::GuiButton {
+                    args: regs,
+                    handler: *handler,
+                    dst,
+                });
                 dst
             }
             TExpr::Builtin {

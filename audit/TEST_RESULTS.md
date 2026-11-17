@@ -1,42 +1,67 @@
-# Test results — current repository preparation
+# Test results — Lutetium 0.4.1 ION GUI slice
 
-Audit results were collected against the source snapshot before repository-cleanup edits. Cleanup changed documentation, file locations for scratch examples, and removed generated binaries; no compiler, VM, runtime or test source was changed during cleanup. The earlier audit also added a GC stress helper before the audit-only task began; it remains in `crates/compiler/tests/end_to_end.rs`.
+Verification was run on the configured Windows x86_64 GNU environment. These
+results cover the current uncommitted working tree; no commit or push was
+performed.
 
-## Environment and tool availability
+## Workspace verification
 
-- OS/toolchain is expected Windows GNU from `.cargo/config.toml` and `rust-toolchain.toml`.
-- `git rev-parse --is-inside-work-tree` returned `fatal: not a git repository` before initialization.
-- Several shell probes (`rustc --version`, `cargo --version`, `lutetium --version`, `gh --version`) were rejected by the command reviewer with “too much or invalid context for automatic review”; they were not verified through the shell here. `.cargo` and toolchain configuration are inspected directly.
-- No `lutetium.exe` is currently tracked/provided as a root executable; existing distribution executable was removed as generated artifact. `lutetium --version` could not be verified.
-
-## Build and test commands
-
-| Command | Observed result |
+| Command | Result |
 |---|---|
-| `cargo fmt --all -- --check` | Failed. Rustfmt reported formatting differences in GUI scaffolding/compiler tests and some source files. Formatter was not run in write mode. |
-| `cargo check --workspace` | Failed compiling `lu-native`; E0004 missing match arm for `IrInstr::GuiButton` in `crates/native/src/backend.rs:349`. |
-| `cargo build --workspace` | Failed with the same E0004 native backend error. |
-| `cargo test --workspace` | Failed during native crate compilation with the same E0004; full workspace tests did not run. |
-| `cargo test -p lu-syntax` | Passed: 24 passed, 0 failed; doc-tests 0. |
-| `cargo test -p lu-diagnostics` | Passed: 0 tests; doc-tests 0. |
-| `cargo test -p lu-vm` | Passed: 8 passed, 0 failed (heap/GC unit tests); doc-tests 0. |
-| `cargo test -p lu-compiler` | Failed: 113 passed, 2 failed out of 115 compiler e2e tests. |
-| `cargo test -p lu-native --no-run` | Failed with E0004; native test binaries could not compile. |
-| `cargo test -p lutetium-cli` | Failed with native compile error; CLI tests did not run. |
-| `cargo build --release` | Not completed in this execution; workspace native compilation blocker applies. |
+| `cargo fmt --all -- --check` | Passed. |
+| `cargo check --workspace` | Passed. |
+| `cargo build --workspace` | Passed. |
+| `cargo build --release --workspace` | Passed. |
+| `cargo test --workspace` | 175 passed, 0 failed; doc-tests passed (0 tests). |
+| `cargo test -p lu-compiler --test end_to_end` | 116 passed, 0 failed. |
+| `cargo test -p lu-native --test native_gui -- --nocapture` | Passed, including repeat runs; validates PE GUI subsystem and Win32 control callback dispatch. |
+| `cargo test -p lutetium-cli --test cli -- --nocapture` | 13 passed, 0 failed, including GUI executable build. |
+| `git diff --check` | Passed. |
 
-### Compiler test failures
+Workspace test count: compiler end-to-end 116, native 14 (2 unit, 11
+console, 1 GUI), syntax 24, VM 8, CLI 13; total 175. This is a Windows-host
+result only and does not verify other hosts or targets.
 
-1. `for_in_iterable_evaluated_once`: compilation failed with `E2001: expected '{', found identifier` on a range/list loop iterable that is a named function call (`mk()`).
-2. `list_equality_bool_str_elements`: program uses heterogeneous list `[true, "a"]`; checker reports `E3001` twice because lists enforce homogeneous element types except int-to-float widening. Existing test expectation and current language contract disagree.
+## CLI target smoke checks
 
-## Coverage facts from test source
+- `cargo run -p lutetium-cli -- check examples/ion_button.lu` — passed.
+- `cargo run -p lutetium-cli -- build examples/ion_button.lu --target gui` —
+  passed; wrote a Windows GUI executable.
+- `cargo run -p lutetium-cli -- build examples/fibonacci.lu --target native`
+  — passed; wrote a Windows console executable.
+- `cargo run -p lutetium-cli -- build examples/fibonacci.lu --target bytecode`
+  — passed; wrote an LTBC bytecode file.
+- The native GUI integration test verifies that console-target linking refuses
+  GUI IR and directs the caller to `--target gui`.
 
-- Syntax: lexer/parser tests for literals/operators/comments/diagnostics, control-flow, lists/maps, field/method/index grammar.
-- Compiler e2e: language positive/negative tests, diagnostics, functions/control flow, collections, builtin execution, verifier/container serialization, GC stress, optimizer equivalence.
-- VM: 8 GC heap tests; VM opcodes/runtime are primarily exercised via compiler e2e.
-- Native: 11 console executable integration tests and 2 unit tests exist, but cannot compile now.
-- CLI: 12 integration tests exist, but cannot compile now.
-- No GUI-specific tests, apps or executable-launch tests exist.
+## GUI behavior verified
 
-Do not use previous `CURRENT_STATE.md` claims of 149 green tests as the current result. Those documents were historical and contradicted by these directly observed runs.
+The integration test compiles and launches a Windows GUI-subsystem program,
+checks `IMAGE_SUBSYSTEM_WINDOWS_GUI` in the generated PE, finds two native
+Win32 `BUTTON` child controls with the same 16-bit ID, and sends `BM_CLICK` to
+each. The first callback must leave the process running; the second calls
+`gui_close(window)`, exits the message loop and cleanly terminates the process.
+This validates Win32 window/control creation, `BN_CLICKED`/`WM_COMMAND`
+notification, callback ABI/dispatch by child HWND, and shutdown.
+
+The final repeatable test does **not** inject physical mouse down/up. An
+experimental `SendInput` version succeeded in some runs but depended on
+foreground activation and intermittently failed; it was removed in favor of
+deterministic `BM_CLICK`. Do not describe `BM_CLICK` as physical mouse input.
+
+## Scope
+
+Verified source API: `gui_window(title, width, height)`,
+`gui_button(window, id, text, x, y, width, height, handler)`, `gui_run(window)`,
+and `gui_close(window)`. The named handler takes one `window` and returns
+`unit`. Button IDs are clamped to Win32's 16-bit range; callers should provide
+unique IDs in range. `WM_DESTROY` posts thread-wide `WM_QUIT`, so only one
+independently run window/message loop is supported. VM GUI builtins remain
+unavailable. No result establishes custom rendering, layouts, keyboard
+handling, reactive state, DPI behavior, broad control support, physical mouse
+automation, or a general-purpose GUI framework.
+
+Two older compiler test programs were adjusted without broadening language
+rules: functions do not capture top-level locals (the mutable list is passed
+explicitly), and lists remain homogeneous (bool and string equality are
+checked independently).

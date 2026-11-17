@@ -1,10 +1,10 @@
-# LANGUAGE_SPEC.md — Lutetium 0.4
+# Language specification — Lutetium 0.4.1
 
-This document describes the implemented subset of Lutetium, version 0.4.
-Everything here is implemented and tested. Features not listed (maps in
-source syntax, structs, enums, pattern matching, generics, closures, async,
-string interpolation, exponent literals) are planned for later milestones and
-must not be assumed to exist.
+This document describes the implemented language subset in workspace version
+0.4.1. The bytecode VM is the broadest execution target; native Windows x64
+GNU and the experimental ION GUI target support narrower subsets. Features
+not listed (imports/modules, structs, enums, pattern matching, generics,
+closures, async, string interpolation, exponent literals) are not implemented.
 
 ## Program structure and entry points
 
@@ -81,6 +81,8 @@ map_entry   = IDENT ":" expr ;
 | `str` | immutable UTF-8 string |
 | `list` | growable sequence of scalars of one element type |
 | `unit` | the type of side-effecting expressions |
+| `window` | opaque native Windows GUI window handle (native GUI target only) |
+| `widget` | opaque native GUI control handle (native GUI target only; not a general widget framework) |
 
 The static checker tracks list element types (`list int`, `list float`, ...)
 even though the syntax has no list type annotation yet.
@@ -113,6 +115,17 @@ even though the syntax has no list type annotation yet.
   implicit return.
 * `main` exists, takes no parameters and returns `unit` (E2102).
 * `print(expr)` is a built-in that prints one value and a newline.
+
+### Native Windows GUI (ION prototype)
+
+The native `--target gui` build supports a deliberately small GUI surface:
+
+* `gui_window(title: str, width: int, height: int) -> window` creates a native Win32 window.
+* `gui_button(window, id: int, text: str, x: int, y: int, width: int, height: int, handler)` creates a native push button. IDs should be unique within the window and in 1..=65535.
+* `handler` must be a named Lutetium function taking one `window` and returning `unit`; for example `fn on_click(window: window) { gui_close(window) }`.
+* `gui_run(window)` runs the Win32 message loop. `gui_close(window)` destroys the window and exits that loop.
+
+This prototype is Windows x86_64 GNU only and is not available in the bytecode VM. The verified integration test sends `BM_CLICK` to a real Win32 button control; it does not automate a physical mouse click. Duplicate or clamped IDs can collide in the native control namespace, although callback dispatch distinguishes child HWNDs. Only one message loop is supported: destroying any window posts thread-wide `WM_QUIT`, so multiple windows are not independently managed. Native labels/input, custom rendering, layouts, keyboard events, GUI state, DPI scaling and a general component framework are not part of the supported API. See `examples/ion_button.lu` and `audit/TEST_RESULTS.md`.
 
 ### Lists
 
@@ -178,7 +191,4 @@ wrong arity is E3007.
 
 `lutetium run` compiles to bytecode, verifies it (never executes unverified
 bytecode), and executes on the register-machine VM. `lutetium build --target
-bytecode` writes `build/<name>.lbc`. `lutetium build --target native`
-compiles through the Cranelift backend to a standalone Windows `.exe` —
-native mode supports scalars (int/float/bool/str) and rejects lists, maps and
-built-in calls with E6002 until their runtime support lands.
+bytecode` writes `build/<name>.lbc`. `lutetium build --target native` compiles through Cranelift to a standalone Windows `.exe`. Native console mode supports the implemented scalar operations, strings and printing, but rejects lists, maps and unsupported builtin calls with E6002. The experimental GUI target adds only the four operations documented above. Native target support is Windows x86_64 GNU only.

@@ -1,8 +1,8 @@
 # Lutetium
 
-Lutetium is an experimental, statically typed, general-purpose programming language implemented in Rust. It provides a source compiler, a verified register-based bytecode VM, and a Windows x86_64 GNU native backend for scalar programs.
+Lutetium 0.4.1 is an experimental, statically typed programming language implemented in Rust. It provides a source compiler, verified register-based bytecode VM, a Windows x86_64 GNU native backend, and a minimal experimental ION GUI target. A native Win32 button click dispatches to a named Lutetium handler.
 
-> **Status: experimental / not a first public release.** The audited checkout is version 0.4.1. At the time of this README refresh, the workspace build is blocked by incomplete GUI IR integration, and two compiler end-to-end tests fail. GUI support is scaffolding only; Lutetium cannot currently build working GUI applications. See [`audit/TEST_RESULTS.md`](audit/TEST_RESULTS.md) and [`audit/KNOWN_ISSUES.md`](audit/KNOWN_ISSUES.md) for observed results.
+> **Status: experimental.** This is a minimal Windows-only GUI prototype, not a general GUI framework. The verified ION slice is limited to a window, native button, named callback, and callback-driven window close; rendering/layout/state and other controls are not supported by this claim.
 
 ## What is implemented
 
@@ -12,9 +12,10 @@ Lutetium is an experimental, statically typed, general-purpose programming langu
 - Scalars, functions, conditionals, loops, lists, record-like maps, string/math/filesystem builtins in the bytecode VM.
 - Precise generational tracing collection for VM list/map objects.
 - IR optimizer (levels 0–2; level 3 currently behaves like level 2).
-- Cranelift native code generation and MinGW linking for Windows x86_64 GNU scalar console programs. The native backend rejects VM-only collections/builtins; the current source tree also has a compile failure in the incomplete GUI IR path.
+- Cranelift native code generation and MinGW linking for Windows x86_64 GNU scalar console programs.
+- Experimental ION native GUI: Win32 top-level window, native button, `WM_COMMAND` click dispatch to a named Lutetium function, and callback-driven close/shutdown. The deterministic Windows integration test uses `BM_CLICK` on the native button; it does not automate physical mouse input.
 
-Features such as imports, closures, structs/enums, a cross-platform native backend, and a functioning GUI framework are not implemented. The native backend and compiler are experimental and should not be treated as production-ready.
+Features such as imports, closures, structs/enums, a cross-platform native backend, GUI rendering beyond standard controls, layout, reactive state, and keyboard input are not implemented. The native backend and compiler are experimental and should not be treated as production-ready.
 
 ## Example
 
@@ -36,8 +37,8 @@ Examples in `examples/` and the tests are the syntax authority. For the full imp
 ## Build prerequisites
 
 - Rust stable toolchain pinned by `rust-toolchain.toml`.
-- Target `x86_64-pc-windows-gnu` and the bundled rustup MinGW-w64 components for native executable linking.
-- No MSVC or Visual Studio requirement in the configured toolchain.
+- For native and GUI executable builds: Windows x86_64 GNU target and the rustup-bundled MinGW-w64 linker components.
+- No MSVC or Visual Studio requirement in the configured toolchain. Bytecode/VM and native linking have only been verified in the configured Windows environment; no other host/target support is claimed.
 
 The workspace target is forced in `.cargo/config.toml`, so this repository is currently configured for Windows x86_64 GNU rather than host-generic builds.
 
@@ -49,7 +50,7 @@ cargo test --workspace
 cargo build --release
 ```
 
-**Current known build status:** `cargo check/build/test --workspace` fails because `IrInstr::GuiButton` is not handled in the native backend. After addressing that blocker, `cargo test -p lu-compiler` currently reports 113 passed and 2 failed. Do not treat old test totals elsewhere in repository history as current results.
+**Current verification:** Windows x86_64 GNU formatting, workspace checks/builds, release build, and workspace tests are recorded in [`audit/TEST_RESULTS.md`](audit/TEST_RESULTS.md). The GUI integration test builds and launches a native executable, sends `BM_CLICK` to its actual Win32 button, dispatches the Lutetium callback, and observes clean shutdown. This does not verify automated physical mouse input.
 
 ## CLI
 
@@ -57,13 +58,13 @@ When built, the CLI source defines:
 
 ```text
 lutetium run <file.lu> [--gc-stats] [--gc-stress]
-lutetium build <file.lu> [--target bytecode|native] [--opt 0-3] [--release]
+lutetium build <file.lu> [--target bytecode|native|gui] [--opt 0-3] [--release]
 lutetium check <file.lu> [--diagnostics json]
 lutetium inspect <file.lbc> | <file.lu> --ir [--optimized]
 lutetium explain <E-code>
 ```
 
-`run` compiles to bytecode, verifies it, then executes it in the VM. Bytecode build verifies before writing `.lbc`. Native build is Windows-only and the current whole workspace must compile first.
+`run` compiles to bytecode, verifies it, then executes it in the VM. Bytecode build verifies before writing `.lbc`. Native and GUI builds target Windows x86_64 GNU; GUI programs run only as generated executables (the bytecode VM reports GUI builtins unavailable). See [`examples/ion_button.lu`](examples/ion_button.lu) for the minimal ION sample; build it with `lutetium build examples/ion_button.lu --target gui`.
 
 ## Repository map
 

@@ -62,6 +62,18 @@ fn hello_world() {
 }
 
 #[test]
+fn gui_builtins_fail_cleanly_on_bytecode_vm() {
+    let error = run_src(
+        "fn on_click(window: window) {}\nfn main() {\n    let window = gui_window(\"VM check\", 320, 240)\n    gui_button(window, 1, \"Close\", 8, 8, 100, 30, on_click)\n}\n",
+    )
+    .expect_err("GUI calls must remain unavailable in the bytecode VM");
+    assert!(
+        error.contains("GUI functions are available only in native Windows GUI executables"),
+        "unexpected error: {error}"
+    );
+}
+
+#[test]
 fn fibonacci_recursion() {
     assert_eq!(
         run_src(
@@ -940,10 +952,7 @@ fn err_map_method_unknown() {
 
 #[test]
 fn for_in_iterates_in_order() {
-    let out = run_src(
-        "for x in [10, 20, 30] {\n    print(x)\n}\n",
-    )
-    .unwrap();
+    let out = run_src("for x in [10, 20, 30] {\n    print(x)\n}\n").unwrap();
     assert_eq!(out, "10\n20\n30\n");
 }
 
@@ -958,10 +967,7 @@ fn for_in_empty_list_zero_iterations() {
 
 #[test]
 fn for_in_over_float_list() {
-    let out = run_src(
-        "for x in [0.5, 1.5, 2.5] {\n    print(x)\n}\n",
-    )
-    .unwrap();
+    let out = run_src("for x in [0.5, 1.5, 2.5] {\n    print(x)\n}\n").unwrap();
     assert_eq!(out, "0.5\n1.5\n2.5\n");
 }
 
@@ -969,10 +975,7 @@ fn for_in_over_float_list() {
 fn for_in_loop_var_is_a_copy() {
     // Assigning to the loop variable affects only the body's local copy;
     // iteration itself is unchanged.
-    let out = run_src(
-        "for x in [1, 2] {\n    x = x + 10\n    print(x)\n}\n",
-    )
-    .unwrap();
+    let out = run_src("for x in [1, 2] {\n    x = x + 10\n    print(x)\n}\n").unwrap();
     assert_eq!(out, "11\n12\n");
 }
 
@@ -980,7 +983,7 @@ fn for_in_loop_var_is_a_copy() {
 fn for_in_iterable_evaluated_once() {
     // The iterable expression runs exactly once, before the loop.
     let out = run_src(
-        "calls = 0\nfn mk() -> list int {\n    calls = calls + 1\n    return [1, 2]\n}\nfor x in mk() {\n    print(x)\n}\nprint(calls)\n",
+        "calls = [0]\nfn mk(calls) {\n    calls.set(0, calls.get(0) + 1)\n    [1, 2]\n}\nfor x in mk(calls) {\n    print(x)\n}\nprint(calls[0])\n",
     )
     .unwrap();
     assert_eq!(out, "1\n2\n1\n");
@@ -1054,10 +1057,10 @@ fn list_equality_int_float_widening() {
 #[test]
 fn list_equality_bool_str_elements() {
     let out = run_src(
-        "print([true, \"a\"] == [true, \"a\"])\nprint([\"a\"] == [\"b\"])\nprint([true] == [false])\n",
+        "print([true, false] == [true, false])\nprint([\"a\", \"b\"] == [\"a\", \"b\"])\nprint([\"a\"] == [\"b\"])\nprint([true] == [false])\n",
     )
     .unwrap();
-    assert_eq!(out, "true\nfalse\nfalse\n");
+    assert_eq!(out, "true\ntrue\nfalse\nfalse\n");
 }
 
 #[test]
@@ -1103,7 +1106,10 @@ fn err_for_in_over_str() {
 
 #[test]
 fn err_for_in_over_map() {
-    assert_eq!(err_code("m = {a: 1}\nfor x in m {\n    print(x)\n}\n"), "E3010");
+    assert_eq!(
+        err_code("m = {a: 1}\nfor x in m {\n    print(x)\n}\n"),
+        "E3010"
+    );
 }
 
 #[test]

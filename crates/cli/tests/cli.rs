@@ -153,6 +153,25 @@ fn build_native_produces_runnable_exe() {
 }
 
 #[test]
+fn build_gui_produces_launchable_windows_gui_executable() {
+    let _guard = BUILD_LOCK.lock().unwrap();
+    assert_eq!(
+        real_main(vec![
+            "build".into(),
+            repo("examples/ion_button.lu"),
+            "--target".into(),
+            "gui".into()
+        ]),
+        0
+    );
+    let exe = std::path::Path::new("build/ion_button.exe");
+    assert!(exe.exists(), "GUI executable must exist");
+    let _ = std::fs::remove_file(exe);
+    let _ = std::fs::remove_file("build/ion_button.obj");
+    let _ = std::fs::remove_file("build/ion_button.runtime.a");
+}
+
+#[test]
 fn build_bytecode_respects_opt_flag_and_inspect_ir() {
     let src = repo("examples/fibonacci.lu");
     assert_eq!(

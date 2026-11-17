@@ -8,7 +8,8 @@ This file records repository changes that are represented in the project history
 - VM generational tracing collector and GC diagnostics.
 - Scalar Windows x64 GNU native backend, Cranelift object generation and MinGW linker integration.
 - IR optimization and inspection commands.
-- **Current limitations:** imports/modules, language-level GUI framework, cross-platform native targets and native collection support are not implemented. Current audited source has a workspace compile error in incomplete GUI IR integration and two failing compiler end-to-end tests; see `audit/TEST_RESULTS.md`.
+- Experimental ION native Windows GUI slice: Win32 window/button, statically named `window -> unit` callback, and callback-driven close. The deterministic integration test uses `BM_CLICK`; physical mouse automation is not claimed. See `audit/TEST_RESULTS.md`.
+- **Current limitations:** imports/modules, a general GUI framework, cross-platform native targets, and native collection support are not implemented. The native backend and GUI remain experimental; see `audit/KNOWN_ISSUES.md`.
 
 ## Historical development
 

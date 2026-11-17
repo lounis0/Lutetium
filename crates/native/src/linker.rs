@@ -79,11 +79,20 @@ pub fn link_exe(object_path: &Path, runtime_lib: &Path, out_exe: &Path) -> Resul
 }
 
 /// Link with the Windows GUI subsystem when requested.
-pub fn link_gui_exe(object_path: &Path, runtime_lib: &Path, out_exe: &Path) -> Result<(), LinkError> {
+pub fn link_gui_exe(
+    object_path: &Path,
+    runtime_lib: &Path,
+    out_exe: &Path,
+) -> Result<(), LinkError> {
     link_exe_with_subsystem(object_path, runtime_lib, out_exe, true)
 }
 
-fn link_exe_with_subsystem(object_path: &Path, runtime_lib: &Path, out_exe: &Path, gui: bool) -> Result<(), LinkError> {
+fn link_exe_with_subsystem(
+    object_path: &Path,
+    runtime_lib: &Path,
+    out_exe: &Path,
+    gui: bool,
+) -> Result<(), LinkError> {
     let tc = find_toolchain()?;
     let mut cmd = Command::new(&tc.gcc);
     // The driver must find `ld.exe` (and friends) shipped next to it.

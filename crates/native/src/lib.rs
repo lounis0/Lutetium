@@ -14,7 +14,7 @@ pub use linker::LinkError;
 
 use crate::backend::Backend;
 use cranelift_codegen::isa;
-use lu_compiler::ir::IrModule;
+use lu_compiler::ir::{IrInstr, IrModule};
 
 pub const TARGET_TRIPLE: &str = "x86_64-pc-windows-gnu";
 
@@ -55,6 +55,37 @@ pub fn build_gui_exe(ir: &IrModule, out_exe: &std::path::Path) -> Result<(), Str
 }
 
 fn build_exe_subsystem(ir: &IrModule, out_exe: &std::path::Path, gui: bool) -> Result<(), String> {
+    let uses_gui = ir.funcs.iter().any(|function| {
+        function.blocks.iter().any(|block| {
+            block.instrs.iter().any(|instruction| match instruction {
+                IrInstr::GuiButton { .. } => true,
+                IrInstr::Builtin { kind, .. } => matches!(
+                    kind,
+                    lu_vm::bytecode::BuiltinKind::GuiWindow
+                        | lu_vm::bytecode::BuiltinKind::GuiLabel
+                        | lu_vm::bytecode::BuiltinKind::GuiInput
+                        | lu_vm::bytecode::BuiltinKind::GuiButton
+                        | lu_vm::bytecode::BuiltinKind::GuiSetText
+                        | lu_vm::bytecode::BuiltinKind::GuiControl
+                        | lu_vm::bytecode::BuiltinKind::GuiGetText
+                        | lu_vm::bytecode::BuiltinKind::GuiGetId
+                        | lu_vm::bytecode::BuiltinKind::GuiOnClick
+                        | lu_vm::bytecode::BuiltinKind::GuiOnKey
+                        | lu_vm::bytecode::BuiltinKind::GuiText
+                        | lu_vm::bytecode::BuiltinKind::GuiRoundRect
+                        | lu_vm::bytecode::BuiltinKind::GuiKeyHandler
+                        | lu_vm::bytecode::BuiltinKind::GuiRun
+                        | lu_vm::bytecode::BuiltinKind::GuiClose
+                ),
+                _ => false,
+            })
+        })
+    });
+    if uses_gui && !gui {
+        return Err(
+            "GUI operations require `build_gui_exe` and the Windows GUI subsystem; use `--target gui`".into(),
+        );
+    }
     let obj_bytes = emit_object(ir).map_err(|e| e.to_string())?;
     let obj_path = out_exe.with_extension("obj");
     std::fs::write(&obj_path, &obj_bytes)

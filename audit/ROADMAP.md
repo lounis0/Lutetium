@@ -1,14 +1,17 @@
-# Prioritized roadmap from current audited state
+# Historical prioritized roadmap
 
-This roadmap is limited to concrete work implied by verified gaps. Each task should land with positive/negative tests and synchronized docs. Do not treat a roadmap item as shipped until its acceptance tests pass.
+> **Historical snapshot, superseded.** P0 items below were written before Git provenance and the Windows ION slice were restored. The compiler/native/GUI path now builds and the workspace tests pass on Windows x86_64 GNU. Current remaining issues are in [`KNOWN_ISSUES.md`](KNOWN_ISSUES.md) and current test evidence in [`TEST_RESULTS.md`](TEST_RESULTS.md). Do not treat the old P0 blockers below as current status.
 
-## P0 — Restore a reviewable, compiling baseline
+This roadmap records concrete gaps identified in the earlier snapshot. Each future task should land with positive/negative tests and synchronized docs; do not treat a roadmap item as shipped until acceptance tests pass.
 
-1. **Establish provenance and freeze GUI edits.** This checkout has no `.git`; initialize/use proper version control outside the audit if needed so incomplete GUI changes can be reviewed without losing prior functionality. Do not reset source blindly.
-2. **Decide intended GUI milestone and public API first.** Current unimplemented GUI builtin names/signatures (`BuiltinKind`, checker AST, partial IR) conflict with each other and have no documented contract. Decide whether widgets are native controls or custom-rendered components; choose how immutable callback IDs bridge to Lutetium function dispatch; specify UI thread/state/ownership.
-3. **Either remove/quarantine broken GUI scaffolding or complete the compiler integration as a separately tested slice.** Currently `IrInstr::GuiButton` is missing in native translator; bytecode codegen panics; VM errors. Do not add more identifiers before an end-to-end ABI exists. Preserve console and VM behavior.
-4. **Resolve compiler suite failures.** Fix parser acceptance for `for x in mk()` or adjust intended semantics/test; settle heterogeneous list test vs homogeneous-list language contract. Verify parser and checker agree.
-5. **Restore clean build, tests and formatting.** Acceptance: `cargo fmt --all -- --check`, `cargo build --workspace`, `cargo test --workspace`, `cargo build --release`. Publish the observed exact count/results, not old report values.
+## Completed since this snapshot
+
+- The repository is on `main` with Git history and an existing remote.
+- The minimal native Windows ION path is integrated, documented, and covered by a GUI-subsystem/real-button callback test.
+- The two compiler tests were corrected to match the implemented no-capture and homogeneous-list rules.
+- Formatting, workspace builds, release build, and all 175 workspace tests pass on Windows x86_64 GNU.
+
+The P1–P4 items below remain future recommendations where relevant. Re-evaluate each against current source before implementation.
 
 ## P1 — Make project docs and metadata accurate
 

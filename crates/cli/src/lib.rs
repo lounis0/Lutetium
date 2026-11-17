@@ -18,7 +18,7 @@ pub fn usage() -> i32 {
         "Lutetium {v}\n\n\
          usage:\n\
          \x20 lutetium run <file.lu>                      compile and execute\n\
-         \x20 lutetium build <file.lu> [--target t] [--opt 0-3] [--release]   write build/<name>.lbc or build/<name>.exe (target: bytecode|native)\n\
+         \x20 lutetium build <file.lu> [--target t] [--opt 0-3] [--release]   write build/<name>.lbc or build/<name>.exe (target: bytecode|native|gui)\n\
          \x20 lutetium check <file.lu> [--diagnostics json]      type-check without running\n\
          \x20 lutetium inspect <file.lbc> | <file.lu> --ir [--optimized]   disassemble bytecode or typed IR\n\
          \x20 lutetium explain <CODE>                     explain an error code\n\
@@ -154,7 +154,7 @@ fn cmd_run(args: &[String]) -> i32 {
     }
 }
 
-fn build_native(path: &str, opt: u8, release: bool) -> i32 {
+fn build_native(path: &str, opt: u8, release: bool, gui: bool) -> i32 {
     let src = match fs::read_to_string(path) {
         Ok(s) => s,
         Err(e) => {
@@ -184,13 +184,19 @@ fn build_native(path: &str, opt: u8, release: bool) -> i32 {
     }
     let out_exe = out_dir.join(format!("{}.exe", stem));
     let started = std::time::Instant::now();
-    if let Err(e) = lu_native::build_exe(&ir, &out_exe) {
+    let build = if gui {
+        lu_native::build_gui_exe(&ir, &out_exe)
+    } else {
+        lu_native::build_exe(&ir, &out_exe)
+    };
+    if let Err(e) = build {
         eprintln!("{}", e);
         return 1;
     }
     println!(
-        "wrote {} (native, opt {}, release {}, {} ms)",
+        "wrote {} (native{}, opt {}, release {}, {} ms)",
         out_exe.display(),
+        if gui { " GUI" } else { "" },
         opt,
         release,
         started.elapsed().as_millis()
@@ -216,12 +222,13 @@ fn cmd_build(args: &[String]) -> i32 {
             "--target" => match it.next() {
                 Some(t) => target = t.as_str(),
                 None => {
-                    eprintln!("error: --target needs a value (bytecode|native)");
+                    eprintln!("error: --target needs a value (bytecode|native|gui)");
                     return 2;
                 }
             },
             "--target=bytecode" => target = "bytecode",
             "--target=native" => target = "native",
+            "--target=gui" => target = "gui",
             "--release" => release = true,
             "--opt" => match it.next().and_then(|v| v.parse::<u8>().ok()) {
                 Some(v) if v <= 3 => opt = v,
@@ -244,15 +251,15 @@ fn cmd_build(args: &[String]) -> i32 {
             _ => {}
         }
     }
-    if target != "bytecode" && target != "native" {
+    if target != "bytecode" && target != "native" && target != "gui" {
         eprintln!(
-            "error: unknown build target `{}` (expected bytecode or native)",
+            "error: unknown build target `{}` (expected bytecode, native, or gui)",
             target
         );
         return 2;
     }
-    if target == "native" {
-        return build_native(path, opt, release);
+    if target == "native" || target == "gui" {
+        return build_native(path, opt, release, target == "gui");
     }
     let src = match fs::read_to_string(path) {
         Ok(s) => s,

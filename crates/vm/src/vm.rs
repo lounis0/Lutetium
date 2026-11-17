@@ -123,7 +123,8 @@ fn list_deep_eq(a: &Value, b: &Value, heap: &mut Heap, depth: u32) -> Result<boo
 }
 
 /// Formatting with GC containers rendered (`[1, 2, 3]`).
-fn format_with_heap(v: &Value, heap: &Heap) -> String {    match v {
+fn format_with_heap(v: &Value, heap: &Heap) -> String {
+    match v {
         Value::List(r) => {
             let items = match heap.get(*r) {
                 Obj::List(items) => items.clone(),
@@ -980,7 +981,9 @@ fn exec_builtin(kind: &BuiltinKind, argv: Vec<Value>, heap: &mut Heap) -> Result
             let path = str_of(arg(0))?;
             Value::Bool(std::path::Path::new(path.as_ref()).exists())
         }
-        GuiWindow | GuiLabel | GuiInput | GuiButton | GuiSetText | GuiControl | GuiGetText | GuiGetId | GuiOnClick | GuiOnKey | GuiText | GuiRoundRect | GuiKeyHandler | GuiRun | GuiClose => {
+        GuiWindow | GuiLabel | GuiInput | GuiButton | GuiSetText | GuiControl | GuiGetText
+        | GuiGetId | GuiOnClick | GuiOnKey | GuiText | GuiRoundRect | GuiKeyHandler | GuiRun
+        | GuiClose => {
             return Err("GUI functions are available only in native Windows GUI executables".into())
         }
     })

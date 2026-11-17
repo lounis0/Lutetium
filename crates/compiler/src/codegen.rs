@@ -1,7 +1,7 @@
 //! Bytecode backend: typed IR -> `.lbc` module.
 
 use crate::ir::{BinOp, Const, IrInstr, IrModule, IrTerm, Ty, UnOp};
-use lu_vm::bytecode::{op, BcConst, BcFunction, BcTy, BytecodeModule};
+use lu_vm::bytecode::{op, BcConst, BcFunction, BcTy, BuiltinKind, BytecodeModule};
 use std::collections::HashMap;
 
 pub fn codegen(ir: &IrModule) -> BytecodeModule {
@@ -118,7 +118,18 @@ pub fn codegen(ir: &IrModule) -> BytecodeModule {
                                 put_u16(&mut code, *a);
                             }
                         }
-                        IrInstr::GuiButton { .. } => unreachable!("GUI IR is native-only and must not be bytecode-compiled"),
+                        IrInstr::GuiButton { args, dst, .. } => {
+                            // Keep the bytecode compiler total: the VM will report
+                            // GUI as unavailable, while native builds lower the
+                            // callback directly to a function pointer.
+                            push(&mut code, op::BUILTIN);
+                            push(&mut code, BuiltinKind::GuiButton.kind_byte());
+                            put_u16(&mut code, *dst);
+                            push(&mut code, args.len() as u8);
+                            for a in args {
+                                put_u16(&mut code, *a);
+                            }
+                        }
                         IrInstr::Print { src, ty: _ } => {
                             push(&mut code, op::PRINT);
                             put_u16(&mut code, *src);
