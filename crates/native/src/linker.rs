@@ -123,6 +123,9 @@ fn link_exe_with_subsystem(
     cmd.arg("-fno-use-linker-plugin");
     // rustc's runtime bits reference these beyond the mingw defaults.
     cmd.arg("-lws2_32");
+    // Rust 1.96 and newer resolve std's Windows futex wait/wake primitives
+    // through this import library in rustup's self-contained MinGW sysroot.
+    cmd.arg("-lsynchronization");
     cmd.arg("-lbcrypt");
     cmd.arg("-ladvapi32");
     cmd.arg("-luserenv");

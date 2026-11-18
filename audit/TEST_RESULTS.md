@@ -9,7 +9,7 @@ All current commands below were run on Windows x86_64 GNU with the pinned toolch
 | `cargo fmt --all -- --check` | Passed. |
 | `cargo check --workspace` | Passed. |
 | `cargo build --workspace` | Passed. |
-| `cargo test --workspace` | 192 passed, 0 failed; doc-tests passed (0 tests). |
+| `cargo test --workspace` | 192 passed, 0 failed before the linker follow-up; the 13 native executable tests pass again after adding `-lsynchronization`. |
 | `cargo build --release` | Passed. |
 | `cargo test -p lutetium-ion --examples` | 3 calculator parser tests passed; gallery has no unit tests. |
 | `cargo build -p lutetium-ion --examples` | Passed. |
@@ -17,6 +17,8 @@ All current commands below were run on Windows x86_64 GNU with the pinned toolch
 | `cargo run -p lutetium-cli -- --version` | `Lutetium 0.4.3`. |
 | `ERROR_CODES.json` parse and code/explanation consistency | Valid JSON; 34 unique codes, all with matching CLI explanations. |
 | `git diff --check` | Passed. |
+
+The first GitHub Actions run exposed an omitted `libsynchronization.a` dependency: its newer Rust runtime imports Windows futex wait/wake functions. `crates/native/src/linker.rs` now links the bundled `-lsynchronization`; all 13 native executable integration tests pass locally with that fix. The release tag v0.4.3 remains on the original release commit; CI for the follow-up is the authoritative check of the fixed linker on the hosted runner.
 
 The workspace test count comprises compiler end-to-end 116, native 2 unit + 13
 console + 1 legacy GUI integration, syntax 24, VM 8, CLI 13, and ION 13 unit

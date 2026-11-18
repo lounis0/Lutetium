@@ -10,6 +10,7 @@ User-visible release notes for Lutetium. The independent `lutetium-ion` crate ha
 
 ### Improved
 - Native Windows integer division, remainder and negation now detect signed overflow consistently with the bytecode VM and report a runtime error instead of relying on target-specific machine behavior.
+- Updated native linking for recent Rust Windows runtimes by linking the bundled MinGW synchronization import library.
 - Added native executable regressions for `i64::MIN / -1`, `i64::MIN % -1` and negating `i64::MIN`.
 - Rewrote the README for current capabilities, setup, supported targets, compiler flow, ION distinction, development, and roadmap; clarified historical audit snapshots.
 - Updated CLI explanations and machine-readable error catalog for current native unsupported-feature and linker errors.
