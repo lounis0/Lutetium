@@ -1,65 +1,58 @@
-# Known issues and limitations — Lutetium 0.4.2
+# Known issues and limitations — Lutetium 0.4.3
 
-This document describes the current source and verified behavior. The language,
-compiler, native backend and ION GUI are experimental; passing tests do not
+This document describes implementation scope and verified limitations. Lutetium,
+the native backend and both GUI projects are experimental; passing tests do not
 imply production readiness.
 
-## ION GUI scope
+## Lutetium language GUI
 
-On Windows x86_64 GNU, the only supported GUI source operations are:
+The Lutetium language still supports only `gui_window`, `gui_button`, `gui_run`,
+and `gui_close` in Windows x86_64 GNU GUI-subsystem executables. GUI built-ins
+are unavailable in the bytecode VM. The callback is a named static Lutetium
+function taking one window and returning unit; closures/captured state are not
+supported. The prototype manages only one independently run window/message
+loop. Button IDs occupy Win32's 16-bit namespace; use unique IDs in range
+1..=65535. The Windows integration test checks PE subsystem and callback
+routing by sending `BM_CLICK` to actual Win32 buttons; this is deterministic
+control-notification testing, not physical mouse input. GUI CLI builds create
+an executable; they do not launch it.
 
-- `gui_window(title, width, height)` creates one centered native Win32 window.
-- `gui_button(window, id, text, x, y, width, height, handler)` creates a
-  standard push button. `handler` is a statically named Lutetium function
-  taking one `window` and returning `unit` (return inference is supported).
-- `gui_run(window)` shows the window and starts the message loop.
-- `gui_close(window)` destroys the window and ends the loop.
-- `lutetium build <file.lu> --target gui` builds a GUI-subsystem executable.
+The language GUI API has no custom drawing, layouts, input controls, keyboard
+or text events, reactive state, DPI support, accessibility abstraction, or
+general widget/component framework. Those features should not be inferred from
+shared builtin metadata or runtime declarations.
 
-`crates/native/tests/native_gui.rs` checks the executable's PE GUI subsystem,
-launches the program, and sends `BM_CLICK` to two real native buttons with the
-same ID but different callbacks. It verifies HWND-based callback selection
-and callback-driven process shutdown. This is deterministic control
-notification testing, not physical mouse input. See `audit/TEST_RESULTS.md`.
+## Separate Rust ION crate
 
-## GUI limitations
+`lutetium-ion` 0.5.0 is a separate Rust package. It supplies a limited
+component/layout/theme/event foundation and a Windows GDI renderer with
+starter controls and examples. It is not GPU accelerated or cross-platform.
+DPI-aware geometry, native accessibility integration, advanced widgets, and
+non-Windows backends are not implemented. See `../docs/ION_0.5.md`.
 
-- The workspace/native backend is configured for `x86_64-pc-windows-gnu`;
-  no other GUI platform/architecture is established.
-- Only one window/message loop is supported. Destroying a window posts
-  thread-wide `WM_QUIT`, so multiple independent windows are not managed.
-- Control IDs are clamped to Win32's 16-bit range. Use unique IDs in
-  1..=65535; HWND-based callback mapping prevents ID collisions from choosing
-  the wrong Lutetium callback, but other Win32 ID-based behavior may collide.
-- Callbacks are named, static function pointers without closures/captured
-  state. The ABI is an experimental native boundary.
-- GUI builtins are unavailable in the bytecode VM.
-- GUI CLI builds produce an executable; they do not launch it.
-- Labels, inputs, custom drawing/rendering, shapes, clipping, layouts,
-  resizing-aware behavior, keyboard/text events, accessibility abstraction,
-  themes, reactive state, animation, DPI-aware coordinates, and a general
-  widget/component framework are not implemented as supported API. GUI names
-  in shared builtin metadata and runtime declarations are not proof of support.
+## Other language/native limitations
 
-## Other project limitations
+- The Windows x86_64 GNU native backend supports only a subset of the VM;
+  collections and unsupported built-ins are rejected.
+- Native string-concatenation allocations use the process heap and are not
+  reclaimed. Native recursion lacks the VM's call-depth guard.
+- Integer arithmetic, including native signed division, remainder, and unary
+  negation overflow, is checked; new native regression tests cover those cases.
+- CLI `--release` does not currently change Cranelift optimization settings.
+  Optimizer level 3 currently aliases level 2.
+- Lists are homogeneous (with int-to-float widening); maps are records with a
+  fixed key set and scalar values. Imports, closures, structs/enums, generics,
+  async and sandboxing are not implemented.
+- The bytecode verifier's register-definition merge is union-based rather than
+  must-analysis; the VM's uninitialized-value check is a runtime safety net.
+  The bytecode decoder requires an exact format version but does not reject
+  trailing bytes after the entry name.
 
-- Native support covers a subset of the VM; collections and many builtins are
-  rejected. Native string-concatenation allocations use the process heap and
-  are not reclaimed. Native recursion lacks the VM's call-depth guard.
-- Lutetium CLI `--release` does not currently change generated Cranelift
-  optimization settings. O3 currently aliases O2.
-- Lists are homogeneous except for int-to-float widening. Maps are
-  record-like with a fixed key set and scalar values. Imports, closures,
-  structs/enums, generics and async are not implemented.
-- The bytecode verifier's register-definition merge is union-based, not a
-  must-analysis; the VM's uninitialized-value check remains a runtime safety
-  net. The bytecode decoder requires an exact version but does not reject
-  trailing bytes after the entry name (see `docs/BYTECODE_FORMAT.md`).
+## Historical test source corrections
 
-## Test source corrections
-
-Two compiler e2e cases were corrected to match existing language rules, not to
-broaden them: functions do not capture top-level locals, so iterable-once
-passes a mutable list explicitly; lists are homogeneous, so bool/string
-list equality is checked as separate lists. The full Windows x64 GNU test
-results are recorded in `audit/TEST_RESULTS.md`.
+Two older compiler end-to-end cases were adjusted to match existing language
+rules, not broaden them: functions do not capture top-level locals, so an
+iterable is passed explicitly; lists are homogeneous, so bool and string
+list-equality checks are separate. Historical 0.4.2 validation results remain
+in `audit/TEST_RESULTS.md`; see the 0.4.3 changelog and current GitHub Actions
+run for current release verification.

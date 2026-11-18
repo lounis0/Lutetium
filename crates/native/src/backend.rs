@@ -528,10 +528,12 @@ impl<'a> FnTranslator<'a> {
                         }
                         BinOp::Div => {
                             self.guard_zero(builder, module, bv, rt)?;
+                            self.guard_div_overflow(builder, module, av, bv, 3, rt)?;
                             builder.ins().sdiv(av, bv)
                         }
                         BinOp::Mod => {
                             self.guard_zero(builder, module, bv, rt)?;
+                            self.guard_div_overflow(builder, module, av, bv, 4, rt)?;
                             builder.ins().srem(av, bv)
                         }
                         _ => builder.ins().icmp(bin_int_cc(*op), av, bv),
@@ -573,7 +575,11 @@ impl<'a> FnTranslator<'a> {
                 let av = self.load(builder, *a);
                 let r = match (op, ty) {
                     (UnOp::Not, _) => builder.ins().bxor_imm(av, 1),
-                    (UnOp::Neg, Ty::Int) => builder.ins().ineg(av),
+                    (UnOp::Neg, Ty::Int) => {
+                        let is_min = builder.ins().icmp_imm(IntCC::Equal, av, i64::MIN);
+                        self.guard(builder, module, is_min, Some(5), rt)?;
+                        builder.ins().ineg(av)
+                    }
                     (UnOp::Neg, Ty::Float) => builder.ins().fneg(av),
                     _ => unreachable!(),
                 };
@@ -651,6 +657,21 @@ impl<'a> FnTranslator<'a> {
         builder.ins().trap(TrapCode::user(1).unwrap());
         builder.switch_to_block(cont);
         Ok(())
+    }
+
+    fn guard_div_overflow(
+        &mut self,
+        builder: &mut FunctionBuilder,
+        module: &mut ObjectModule,
+        a: Value,
+        b: Value,
+        operation: i64,
+        rt: &std::collections::HashMap<&'static str, cranelift_module::FuncId>,
+    ) -> Result<(), String> {
+        let is_min = builder.ins().icmp_imm(IntCC::Equal, a, i64::MIN);
+        let is_negative_one = builder.ins().icmp_imm(IntCC::Equal, b, -1);
+        let overflow = builder.ins().band(is_min, is_negative_one);
+        self.guard(builder, module, overflow, Some(operation), rt)
     }
 
     fn guard_zero(

@@ -1,7 +1,7 @@
-# Language specification — Lutetium 0.4.2
+# Language specification — Lutetium 0.4.3
 
 This document describes the implemented language subset in workspace version
-0.4.2. The bytecode VM is the broadest execution target; native Windows x64
+0.4.3. The bytecode VM is the broadest execution target; native Windows x64
 GNU and the experimental ION GUI target support narrower subsets. Features
 not listed (imports/modules, structs, enums, pattern matching, generics,
 closures, async, string interpolation, exponent literals) are not implemented.
@@ -118,14 +118,14 @@ even though the syntax has no list type annotation yet.
 
 ### Native Windows GUI (ION prototype)
 
-The native `--target gui` build supports a deliberately small GUI surface:
+The Lutetium language `--target gui` build supports a deliberately small GUI surface. It is distinct from the separate Rust `lutetium-ion` crate documented in `ION_0.5.md`:
 
 * `gui_window(title: str, width: int, height: int) -> window` creates a native Win32 window.
 * `gui_button(window, id: int, text: str, x: int, y: int, width: int, height: int, handler)` creates a native push button. IDs should be unique within the window and in 1..=65535.
 * `handler` must be a named Lutetium function taking one `window` and returning `unit`; for example `fn on_click(window: window) { gui_close(window) }`.
 * `gui_run(window)` runs the Win32 message loop. `gui_close(window)` destroys the window and exits that loop.
 
-This prototype is Windows x86_64 GNU only and is not available in the bytecode VM. The verified integration test sends `BM_CLICK` to a real Win32 button control; it does not automate a physical mouse click. Duplicate or clamped IDs can collide in the native control namespace, although callback dispatch distinguishes child HWNDs. Only one message loop is supported: destroying any window posts thread-wide `WM_QUIT`, so multiple windows are not independently managed. Native labels/input, custom rendering, layouts, keyboard events, GUI state, DPI scaling and a general component framework are not part of the supported API. See `examples/ion_button.lu` and `audit/TEST_RESULTS.md`.
+This prototype is Windows x86_64 GNU only and is not available in the bytecode VM. The verified integration test sends `BM_CLICK` to a real Win32 button control; it does not automate a physical mouse click. Duplicate or clamped IDs can collide in the native control namespace, although callback dispatch distinguishes child HWNDs. Only one message loop is supported: destroying any window posts thread-wide `WM_QUIT`, so multiple windows are not independently managed. The language GUI API does not include custom rendering, layouts, keyboard events, GUI state or DPI scaling. The separate Rust ION crate provides a limited component/layout/theme/event API with a Windows GDI renderer; it is not cross-platform or a general-purpose framework. See `docs/ION_0.5.md` and `examples/ion_button.lu`.
 
 ### Lists
 
@@ -173,7 +173,8 @@ wrong arity is E3007.
 ## Runtime semantics
 
 * Integer arithmetic is checked: division/modulo by zero raises E5002;
-  overflow raises E5005. Float division follows IEEE 754 (inf/NaN).
+  overflow raises E5005. Both bytecode and native backends check signed
+  division/remainder and negation overflow. Float division follows IEEE 754 (inf/NaN).
 * Integer division truncates toward zero; `%` takes the sign of the dividend.
 * Deep recursion (1024 frames) raises E5001.
 * Failed built-ins raise E5009 with the kind name: list index out of bounds,

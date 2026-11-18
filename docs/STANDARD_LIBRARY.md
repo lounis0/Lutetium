@@ -92,10 +92,10 @@ This is a minimal prototype, not a complete GUI toolkit. The repeatable native t
 with a decimal point (`2.0`), bools as `true`/`false`, strings raw, lists as
 `[1, 2, 3]` and maps as `{name: Ada}` (recursively).
 
-## Planned (not implemented — do not use)
+## Not implemented
 
-`math`, `text`, `collections`, `io`, `fs`, `path`, `time`, `random`,
-`system`, `process` modules, the `import` statement, sets, heterogeneous
-dynamic-key maps (records above have fixed keys), list/map equality,
-nesting (lists of lists/maps). Tracked in `ROADMAP.md` (Phase 4); none of
-these names resolve today except the built-ins above.
+There is no importable standard-library module tree (such as `math`, `io`,
+`fs`, `time`, or `process`) or `import` statement. Some math and filesystem
+operations are available as free built-ins listed above. Sets, heterogeneous
+dynamic-key maps, nested lists/maps, and general list/map equality are not
+implemented. These remain future work; consult the repository roadmap.

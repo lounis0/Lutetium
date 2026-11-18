@@ -25,19 +25,13 @@ const EXPLANATIONS: &[Explained] = &[
         code: "E2001",
         title: "syntax error",
         body: "The parser found a token it did not expect at this position.",
-        fix: "Compare the highlighted line with the grammar in docs/LANGUAGE_SPEC.md; check for a missing brace, colon or comma.",
+        fix: "Compare the highlighted line with docs/GRAMMAR.ebnf; check for a missing brace, colon or comma.",
     },
     Explained {
         code: "E2002",
         title: "expected an expression",
         body: "An expression was required here (after `=`, inside `(...)`, as a condition, ...).",
         fix: "Write a literal, a variable, a call, or a parenthesized expression at the highlighted position.",
-    },
-    Explained {
-        code: "E2005",
-        title: "method calls are not supported yet",
-        body: "Lutetium 0.1 has no method-call syntax (`value.method()`); it is planned for the language-expansion milestone.",
-        fix: "Use free functions for now.",
     },
     Explained {
         code: "E2006",
@@ -202,10 +196,22 @@ const EXPLANATIONS: &[Explained] = &[
         fix: "Use smaller operands, or floats when values may exceed the int range.",
     },
     Explained {
-        code: "E6001",
-        title: "native backend not available",
-        body: "`lutetium build --target native` requires the Cranelift-based native backend, planned for milestone 2.",
-        fix: "Use `--target bytecode` for now.",
+        code: "E5009",
+        title: "built-in operation failed",
+        body: "A runtime operation failed, for example a list index was out of bounds, a list was empty when popped, a map key was absent, or file I/O failed.",
+        fix: "Check the runtime message and validate indices, keys, and filesystem permissions before the operation.",
+    },
+    Explained {
+        code: "E6002",
+        title: "native compilation unsupported",
+        body: "The requested program uses a language value or built-in that this experimental native backend does not support.",
+        fix: "Use `lutetium run` with the bytecode VM, or restrict the native program to supported scalar operations.",
+    },
+    Explained {
+        code: "E6003",
+        title: "native linking failed",
+        body: "Lutetium could not link the generated object into a Windows executable using the configured rustup MinGW-w64 toolchain.",
+        fix: "Verify that the pinned x86_64-pc-windows-gnu Rust target and its self-contained MinGW components are installed.",
     },
 ];
 

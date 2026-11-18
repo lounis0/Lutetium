@@ -1,6 +1,6 @@
 # Lutetium architecture — source-verified snapshot
 
-**Project version:** 0.4.2. **Target verified in this snapshot:** Windows x86_64 GNU. The repository was on branch `main` at base commit `1f86307` when this maintenance pass began; implementation changes were uncommitted then. This report describes the reviewed source state, not a claim of cross-platform or production readiness.
+**Historical project version:** 0.4.2. **Target verified in this snapshot:** Windows x86_64 GNU. This page preserves the 0.4.2 source review; for current 0.4.3 language/native capabilities see `../docs/ARCHITECTURE.md`, and for the separate Rust UI crate see `../docs/ION_0.5.md`. This snapshot is not a claim of cross-platform or production readiness.
 
 ## 1. Crate architecture
 

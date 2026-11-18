@@ -1,0 +1,23 @@
+[package]
+name = "lutetium-ion"
+version = "0.5.0"
+edition.workspace = true
+license = "MIT"
+description = "A modular native UI foundation for Lutetium"
+
+[lib]
+name = "lutetium_ion"
+path = "src/lib.rs"
+
+[[example]]
+name = "calculator"
+path = "../../examples/ion/calculator.rs"
+
+[[example]]
+name = "component_gallery"
+path = "../../examples/ion/component_gallery.rs"
+
+[[test]]
+name = "native_window"
+path = "tests/native_window.rs"
+harness = true

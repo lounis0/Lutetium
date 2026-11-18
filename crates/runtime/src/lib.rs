@@ -451,14 +451,17 @@ pub extern "system" fn lut_rt_panic_div0() {
 
 #[no_mangle]
 pub extern "system" fn lut_rt_panic_overflow(op: i32) {
-    let name = match op {
-        0 => "+",
-        1 => "-",
-        2 => "*",
-        _ => "arith",
+    let message = match op {
+        0 => "integer addition overflow",
+        1 => "integer subtraction overflow",
+        2 => "integer multiplication overflow",
+        3 => "integer division overflow",
+        4 => "integer modulo overflow",
+        5 => "integer negation overflow",
+        _ => "integer arithmetic overflow",
     };
     let mut msg = String::new();
-    let _ = writeln!(msg, "runtime error: integer {} overflow", name);
+    let _ = writeln!(msg, "runtime error: {}", message);
     write_to(STD_ERROR_HANDLE, msg.as_bytes());
     unsafe { win::ExitProcess(1) }
 }

@@ -1,6 +1,6 @@
 # Contributing to Lutetium
 
-Thanks for your interest. Lutetium is experimental and the current workspace may not build; consult `audit/TEST_RESULTS.md` before choosing work so you know the baseline.
+Thanks for your interest. Lutetium is experimental. Check `audit/TEST_RESULTS.md` for the historical 0.4.2 validation snapshot and `audit/KNOWN_ISSUES.md` for current verified limitations before choosing work.
 
 ## Development environment
 
@@ -16,6 +16,7 @@ Thanks for your interest. Lutetium is experimental and the current workspace may
 - `lu-vm`: bytecode format, independent verifier, VM and VM heap/GC.
 - `lu-native`: Cranelift x64 COFF generation and Windows GNU linker integration.
 - `crates/runtime`: static native runtime source compiled by `crates/native/build.rs`.
+- `crates/ion`: independent 0.5.0 Rust UI library and Windows GDI backend; separate from Lutetium language GUI built-ins.
 
 Read `audit/ARCHITECTURE.md` and `docs/` before changing cross-crate interfaces. The VM must remain independent of compiler frontend crates; never run bytecode that failed `lu_vm::verify`.
 
@@ -31,7 +32,7 @@ cargo test --workspace
 cargo build --release
 ```
 
-The current audited baseline has a native compile error and two compiler e2e failures. A contribution should report both baseline and post-change results. Do not change or delete tests solely to make checks pass.
+Before submitting a change, run the checks above and any focused tests. The checked-in full-workspace baseline is verified on Windows x86_64 GNU only; do not claim validation on other hosts. Do not change or delete tests solely to make checks pass. Native GUI tests use Win32 messages for deterministic event dispatch, not physical mouse automation. ION examples open interactive Windows windows and are not headless checks.
 
 ## Language changes
 
@@ -40,6 +41,8 @@ The current audited baseline has a native compile error and two compiler e2e fai
 - Bytecode format changes must bump `FORMAT_VERSION`, update `docs/BYTECODE_FORMAT.md`, verifier, VM, codegen and serialization tests together.
 - Keep `docs/LANGUAGE_SPEC.md` limited to behavior that is implemented and tested.
 - Builtin signatures and runtime implementation must agree; prefer tests that verify arity/types and execution.
+
+For ION-specific validation, also run `cargo test -p lutetium-ion --examples`, `cargo build -p lutetium-ion --examples`, and `cargo check -p lutetium-ion --target x86_64-pc-windows-gnu --all-targets`.
 
 ## Pull requests
 

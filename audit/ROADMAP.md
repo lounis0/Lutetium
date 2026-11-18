@@ -9,14 +9,14 @@ This roadmap records concrete gaps identified in the earlier snapshot. Each futu
 - The repository is on `main` with Git history and an existing remote.
 - The minimal native Windows ION path is integrated, documented, and covered by a GUI-subsystem/real-button callback test.
 - The two compiler tests were corrected to match the implemented no-capture and homogeneous-list rules.
-- Formatting, workspace builds, release build, and all 175 workspace tests pass on Windows x86_64 GNU.
+- For the historical 0.4.2 snapshot, formatting, workspace builds, release build, and 175 workspace tests passed on Windows x86_64 GNU. The 0.4.3 release adds a separate Rust ION crate, native arithmetic overflow guards and docs cleanup; current validation is recorded in its release notes and Actions run.
 
-The P1–P4 items below remain future recommendations where relevant. Re-evaluate each against current source before implementation.
+The P1–P4 list below is historical planning. Several P1 documentation/error-code items have since been addressed; evaluate every recommendation against current source and the 0.4.3 docs before implementation.
 
 ## P1 — Make project docs and metadata accurate
 
-6. Synchronize README/AGENTS/CHANGELOG/ROADMAP/TASKS/CURRENT_STATE/`docs/*`/`ERROR_CODES.json`/`explain.rs`/format version for the current 0.4.2 source. Clearly state native support boundaries and runtime errors.
-7. Add missing stable runtime/native error code registrations for E5009 and E6002/E6003 if these codes are part of user-visible behavior, with explain entries and tests. Remove stale E2005/E6001 explanations only with a compatibility decision.
+6. Keep user-facing docs, error metadata and explanations synchronized with the current version and verified behavior.
+7. Add regressions whenever observable runtime/native error behavior changes; `ERROR_CODES.json` and `explain.rs` now include E5009/E6002/E6003 and omit retired E2005/E6001.
 8. Add static audit/test command CI (Windows GNU) and protect release/test claims.
 
 ## P2 — GUI Foundation (only after architecture/API ADR)

@@ -1,6 +1,37 @@
-# Test results — Lutetium 0.4.2 ION GUI slice
+# Test results — Lutetium 0.4.3
 
-Verification was run on the configured Windows x86_64 GNU environment. These results cover the 0.4.2 release candidate.
+All current commands below were run on Windows x86_64 GNU with the pinned toolchain. Historical 0.4.2 results are retained at the end of this page.
+
+## Lutetium 0.4.3 validation
+
+| Command/check | Result |
+|---|---|
+| `cargo fmt --all -- --check` | Passed. |
+| `cargo check --workspace` | Passed. |
+| `cargo build --workspace` | Passed. |
+| `cargo test --workspace` | 192 passed, 0 failed; doc-tests passed (0 tests). |
+| `cargo build --release` | Passed. |
+| `cargo test -p lutetium-ion --examples` | 3 calculator parser tests passed; gallery has no unit tests. |
+| `cargo build -p lutetium-ion --examples` | Passed. |
+| `cargo check -p lutetium-ion --target x86_64-pc-windows-gnu --all-targets` | Passed. |
+| `cargo run -p lutetium-cli -- --version` | `Lutetium 0.4.3`. |
+| `ERROR_CODES.json` parse and code/explanation consistency | Valid JSON; 34 unique codes, all with matching CLI explanations. |
+| `git diff --check` | Passed. |
+
+The workspace test count comprises compiler end-to-end 116, native 2 unit + 13
+console + 1 legacy GUI integration, syntax 24, VM 8, CLI 13, and ION 13 unit
++ 2 Windows integration tests: 192 total. The calculator example adds three
+parser tests when tested with `--examples`. The native arithmetic regressions
+exercise `i64::MIN / -1`, `i64::MIN % -1`, and negation of `i64::MIN`, each
+expecting a reported runtime overflow and exit code 1.
+
+The two ION examples compile as Windows executables. Running the calculator or
+component-gallery examples opens an interactive native window and was not
+claimed as automated visual/physical-input validation. Legacy GUI behavior is
+verified separately by Win32 message dispatch; see the historical details below.
+
+## Historical 0.4.2 test results
+
 
 ## Workspace verification
 

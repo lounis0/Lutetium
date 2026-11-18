@@ -1,12 +1,12 @@
-# Current worktree audit — Lutetium 0.4.2
+# Historical worktree audit — Lutetium 0.4.2
 
 ## Snapshot and scope
 
-This audit records the Lutetium 0.4.2 release candidate based on commit
-`e19c670` on `main`. The release updates package metadata and documentation
-without changing the ION implementation. Formatting, builds, tests, and the
-CLI version were verified after the bump. The separate website task is paused;
-no `lutetium-website/` files or dependencies have been created.
+This page records the Lutetium 0.4.2 release candidate based on commit
+`e19c670` on `main`. It predates the independent Rust `lutetium-ion` crate and
+the Lutetium 0.4.3 changes. See the current README, `../docs/ARCHITECTURE.md`,
+`KNOWN_ISSUES.md`, and `../CHANGELOG.md` for current scope; retained 0.4.2
+test counts are historical.
 
 ## Changed files
 
@@ -133,9 +133,8 @@ See `audit/TEST_RESULTS.md` for historical test counts and the important
 physical-input caveat. Refresh it after the final full-workspace run in this
 working session if anything changes.
 
-## Git state and next steps
+## Historical state
 
-The 0.4.2 package-version changes are verified and documented in
-`audit/TEST_RESULTS.md`. Keep ION scope explicitly experimental; add one
-feature at a time with Windows integration coverage. Review the callback ABI,
-resource cleanup and runtime error/lifetime behavior before expanding the API.
+This is a preserved 0.4.2 audit snapshot and does not describe current Git
+state. The 0.4.3 release keeps the language GUI prototype experimental and
+introduces a separate Rust UI crate without changing that language ABI.

@@ -91,6 +91,36 @@ fn native_integer_overflow_exits_1() {
 }
 
 #[test]
+fn native_division_and_remainder_overflow_exit_1() {
+    for (source, name, expected) in [
+        (
+            "print((-9223372036854775807 - 1) / -1)\n",
+            "divoverflow",
+            "division overflow",
+        ),
+        (
+            "print((-9223372036854775807 - 1) % -1)\n",
+            "removerflow",
+            "modulo overflow",
+        ),
+    ] {
+        let (code, out, err) = run_native(source, name);
+        assert_eq!(code, 1, "stdout: {} stderr: {}", out, err);
+        assert!(
+            err.contains(expected),
+            "expected {expected:?}, stderr: {err}"
+        );
+    }
+}
+
+#[test]
+fn native_integer_negation_overflow_exits_1() {
+    let (code, out, err) = run_native("print(-(-9223372036854775807 - 1))\n", "negoverflow");
+    assert_eq!(code, 1, "stdout: {} stderr: {}", out, err);
+    assert!(err.contains("negation overflow"), "stderr: {}", err);
+}
+
+#[test]
 fn native_short_circuit_logic() {
     let (code, out, err) = run_native(
         "print(true && false)\nprint(true || false)\nprint(!false)\nprint(false && (1 / 0 == 0))\n",

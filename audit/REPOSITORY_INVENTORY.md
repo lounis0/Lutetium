@@ -1,6 +1,6 @@
 # Historical Lutetium repository inventory
 
-> **Historical snapshot, superseded.** This inventory and its pre-GUI capability/test claims predate the currently verified ION implementation. Current status and changed-file inventory are in [`CURRENT_WORKTREE_AUDIT.md`](CURRENT_WORKTREE_AUDIT.md), with current architecture/issues/results in the companion audit files. The original statement that the directory had no Git metadata is no longer current.
+> **Historical snapshot, superseded.** This inventory predates Lutetium 0.4.3, the independent Rust ION crate, and the current native arithmetic overflow fixes. The 0.4.2 worktree audit and test counts below are retained as historical records only. Current scope is in [`../README.md`](../README.md), [`../docs/ARCHITECTURE.md`](../docs/ARCHITECTURE.md), and [`KNOWN_ISSUES.md`](KNOWN_ISSUES.md).
 
 **Original snapshot:** repository inspected 2026-11-12; release-preparation updates performed afterward.
 

@@ -7,10 +7,11 @@ members = [
     "crates/compiler",
     "crates/cli",
     "crates/native",
+    "crates/ion",
 ]
 
 [workspace.package]
-version = "0.4.2"
+version = "0.4.3"
 edition = "2021"
 
 [profile.release]

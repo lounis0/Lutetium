@@ -1,21 +1,34 @@
 # Changelog
 
-This file records repository changes that are represented in the project history documents. It is not a release certification; versions below are source workspace versions, and old test/build claims are not current test results.
+User-visible release notes for Lutetium. The independent `lutetium-ion` crate has its own 0.5.0 version and is called out separately where relevant.
 
-## 0.4.2 — current workspace version
+## 0.4.3 — 2026-11-18
 
-- Release alignment: workspace crates and CLI now report version 0.4.2; the
-  0.4.1 implementation and documented experimental GUI scope are retained.
+### Added
+- Added the independent `lutetium-ion` 0.5.0 Rust UI crate to the Cargo workspace, preserving its separate package identity and the existing Lutetium language GUI ABI.
+- Added ION calculator and component-gallery Rust examples, component/layout/theme/event unit coverage, and Windows native-window integration coverage for rendering lifecycle, input and selection events.
 
-## 0.4.1 — previous workspace version
+### Improved
+- Native Windows integer division, remainder and negation now detect signed overflow consistently with the bytecode VM and report a runtime error instead of relying on target-specific machine behavior.
+- Added native executable regressions for `i64::MIN / -1`, `i64::MIN % -1` and negating `i64::MIN`.
+- Rewrote the README for current capabilities, setup, supported targets, compiler flow, ION distinction, development, and roadmap; clarified historical audit snapshots.
+- Updated CLI explanations and machine-readable error catalog for current native unsupported-feature and linker errors.
 
-- Record-style map literals and field access; list/map heap support in the bytecode VM.
-- VM generational tracing collector and GC diagnostics.
-- Scalar Windows x64 GNU native backend, Cranelift object generation and MinGW linker integration.
-- IR optimization and inspection commands.
-- Experimental ION native Windows GUI slice: Win32 window/button, statically named `window -> unit` callback, and callback-driven close. The deterministic integration test uses `BM_CLICK`; physical mouse automation is not claimed. See `audit/TEST_RESULTS.md`.
-- **Current limitations:** imports/modules, a general GUI framework, cross-platform native targets, and native collection support are not implemented. The native backend and GUI remain experimental; see `audit/KNOWN_ISSUES.md`.
+### Compatibility
+- Bumped the Lutetium workspace, runtime package and CLI to 0.4.3. The standalone ION crate remains 0.5.0.
+- The bytecode format remains LTBC v5. Existing `gui_window`, `gui_button`, `gui_run`, and `gui_close` contracts remain unchanged.
 
-## Historical development
+### Known limitations
+- Lutetium, its native backend and both GUI surfaces remain experimental. Native code generation and GUI execution are Windows x86_64 GNU only.
+- `lutetium-ion` uses GDI and does not implement GPU rendering, native accessibility APIs, DPI-aware layout or non-Windows backends.
+- Lutetium imports/modules, closures, structs/enums, generics and sandboxing are not implemented. Optimizer level 3 currently aliases level 2; native `--release` does not configure Cranelift optimization.
 
-Earlier project milestones and decisions are preserved in `DECISIONS.md` and `.development/SESSION_LOG.md`. Those documents describe work as it was recorded at the time and may not reflect current verification status. The current source audit is in `audit/`.
+## 0.4.2
+
+- Aligned Lutetium workspace crates, CLI and standalone runtime metadata to 0.4.2; retained the experimental native Windows GUI API.
+- See Git history and `audit/TEST_RESULTS.md` for the historical 0.4.2 verification snapshot.
+
+## 0.4.1
+
+- Added record-style maps, map methods/field access, deep list equality, VM GC support and the experimental scalar Windows native backend.
+- See Git history for detailed historical changes and constraints.

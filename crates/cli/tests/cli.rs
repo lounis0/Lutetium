@@ -18,7 +18,7 @@ fn repo(rel: &str) -> String {
 
 #[test]
 fn version_prints() {
-    assert_eq!(lutetium_cli::VERSION, "0.4.2");
+    assert_eq!(lutetium_cli::VERSION, "0.4.3");
     assert_eq!(real_main(args(&["--version"])), 0);
 }
 
@@ -203,7 +203,12 @@ fn build_bytecode_respects_opt_flag_and_inspect_ir() {
 
 #[test]
 fn explain_known_and_unknown_codes() {
-    assert_eq!(real_main(args(&["explain", "E3001"])), 0);
+    for code in ["E3001", "E5009", "E6002", "E6003"] {
+        assert_eq!(real_main(args(&["explain", code])), 0);
+    }
+    for retired in ["E2005", "E6001"] {
+        assert_eq!(real_main(args(&["explain", retired])), 2);
+    }
     assert_eq!(real_main(args(&["explain", "NOPE123"])), 2);
 }
 
