@@ -1,7 +1,7 @@
-# Language specification — Lutetium 0.4.1
+# Language specification — Lutetium 0.4.2
 
 This document describes the implemented language subset in workspace version
-0.4.1. The bytecode VM is the broadest execution target; native Windows x64
+0.4.2. The bytecode VM is the broadest execution target; native Windows x64
 GNU and the experimental ION GUI target support narrower subsets. Features
 not listed (imports/modules, structs, enums, pattern matching, generics,
 closures, async, string interpolation, exponent literals) are not implemented.

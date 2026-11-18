@@ -1,8 +1,6 @@
-# Test results — Lutetium 0.4.1 ION GUI slice
+# Test results — Lutetium 0.4.2 ION GUI slice
 
-Verification was run on the configured Windows x86_64 GNU environment. These
-results cover the current uncommitted working tree; no commit or push was
-performed.
+Verification was run on the configured Windows x86_64 GNU environment. These results cover the 0.4.2 release candidate.
 
 ## Workspace verification
 
@@ -17,6 +15,7 @@ performed.
 | `cargo test -p lu-native --test native_gui -- --nocapture` | Passed, including repeat runs; validates PE GUI subsystem and Win32 control callback dispatch. |
 | `cargo test -p lutetium-cli --test cli -- --nocapture` | 13 passed, 0 failed, including GUI executable build. |
 | `git diff --check` | Passed. |
+| CLI version smoke check | `Lutetium 0.4.2`. |
 
 Workspace test count: compiler end-to-end 116, native 14 (2 unit, 11
 console, 1 GUI), syntax 24, VM 8, CLI 13; total 175. This is a Windows-host

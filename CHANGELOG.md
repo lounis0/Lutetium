@@ -2,7 +2,12 @@
 
 This file records repository changes that are represented in the project history documents. It is not a release certification; versions below are source workspace versions, and old test/build claims are not current test results.
 
-## 0.4.1 — current workspace version
+## 0.4.2 — current workspace version
+
+- Release alignment: workspace crates and CLI now report version 0.4.2; the
+  0.4.1 implementation and documented experimental GUI scope are retained.
+
+## 0.4.1 — previous workspace version
 
 - Record-style map literals and field access; list/map heap support in the bytecode VM.
 - VM generational tracing collector and GC diagnostics.

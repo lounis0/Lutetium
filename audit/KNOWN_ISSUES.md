@@ -1,4 +1,4 @@
-# Known issues and limitations — Lutetium 0.4.1
+# Known issues and limitations — Lutetium 0.4.2
 
 This document describes the current source and verified behavior. The language,
 compiler, native backend and ION GUI are experimental; passing tests do not

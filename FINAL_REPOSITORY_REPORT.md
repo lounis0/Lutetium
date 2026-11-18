@@ -1,4 +1,6 @@
-# Final repository preparation report
+# Historical repository preparation report
+
+> **Superseded.** This report records the repository state before authenticated GitHub publication and before the Lutetium 0.4.2 version bump. Its publication and verification statements are historical, not current. See `audit/CURRENT_WORKTREE_AUDIT.md` and `audit/TEST_RESULTS.md` for the 0.4.2 state.
 
 **Date:** 2026-11-12
 

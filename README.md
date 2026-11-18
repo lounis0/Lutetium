@@ -1,6 +1,6 @@
 # Lutetium
 
-Lutetium 0.4.1 is an experimental, statically typed programming language implemented in Rust. It provides a source compiler, verified register-based bytecode VM, a Windows x86_64 GNU native backend, and a minimal experimental ION GUI target. A native Win32 button click dispatches to a named Lutetium handler.
+Lutetium 0.4.2 is an experimental, statically typed programming language implemented in Rust. It provides a source compiler, verified register-based bytecode VM, a Windows x86_64 GNU native backend, and a minimal experimental ION GUI target. A native Win32 button click dispatches to a named Lutetium handler.
 
 > **Status: experimental.** This is a minimal Windows-only GUI prototype, not a general GUI framework. The verified ION slice is limited to a window, native button, named callback, and callback-driven window close; rendering/layout/state and other controls are not supported by this claim.
 

@@ -1,4 +1,4 @@
-# Lutetium architecture (0.4.1)
+# Lutetium architecture (0.4.2)
 
 ## Source-to-execution pipeline
 

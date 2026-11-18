@@ -15,7 +15,7 @@ The P1–P4 items below remain future recommendations where relevant. Re-evaluat
 
 ## P1 — Make project docs and metadata accurate
 
-6. Synchronize README/AGENTS/CHANGELOG/ROADMAP/TASKS/CURRENT_STATE/`docs/*`/`ERROR_CODES.json`/`explain.rs`/format version for actual 0.4.1 source. Clearly state native support boundaries and runtime errors.
+6. Synchronize README/AGENTS/CHANGELOG/ROADMAP/TASKS/CURRENT_STATE/`docs/*`/`ERROR_CODES.json`/`explain.rs`/format version for the current 0.4.2 source. Clearly state native support boundaries and runtime errors.
 7. Add missing stable runtime/native error code registrations for E5009 and E6002/E6003 if these codes are part of user-visible behavior, with explain entries and tests. Remove stale E2005/E6001 explanations only with a compatibility decision.
 8. Add static audit/test command CI (Windows GNU) and protect release/test claims.
 

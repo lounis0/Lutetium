@@ -8,7 +8,7 @@
 
 | Path | Role and current note |
 |---|---|
-| `Cargo.toml` | Workspace manifest; six crates, version 0.4.1, Rust 2021; release uses thin LTO, one codegen unit, strip. |
+| `Cargo.toml` | Workspace manifest; six crates, version 0.4.2, Rust 2021; release uses thin LTO, one codegen unit, strip. |
 | `Cargo.lock` | Locked dependency graph; preserve for reproducible builds. |
 | `rust-toolchain.toml` | Pins stable Windows GNU toolchain. |
 | `.cargo/config.toml` | Forces `x86_64-pc-windows-gnu`; real platform limitation. |

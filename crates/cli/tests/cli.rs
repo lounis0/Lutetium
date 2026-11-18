@@ -18,6 +18,7 @@ fn repo(rel: &str) -> String {
 
 #[test]
 fn version_prints() {
+    assert_eq!(lutetium_cli::VERSION, "0.4.2");
     assert_eq!(real_main(args(&["--version"])), 0);
 }
 

@@ -1,6 +1,6 @@
 # Lutetium architecture — source-verified snapshot
 
-**Project version:** 0.4.1. **Target verified in this snapshot:** Windows x86_64 GNU. The repository was on branch `main` at base commit `1f86307` when this maintenance pass began; implementation changes were uncommitted then. This report describes the reviewed source state, not a claim of cross-platform or production readiness.
+**Project version:** 0.4.2. **Target verified in this snapshot:** Windows x86_64 GNU. The repository was on branch `main` at base commit `1f86307` when this maintenance pass began; implementation changes were uncommitted then. This report describes the reviewed source state, not a claim of cross-platform or production readiness.
 
 ## 1. Crate architecture
 
