@@ -36,7 +36,15 @@ impl Rect {
         }
     }
     pub fn contains(self, point: Point) -> bool {
-        point.x >= self.origin.x
+        self.origin.x.is_finite()
+            && self.origin.y.is_finite()
+            && self.size.width.is_finite()
+            && self.size.height.is_finite()
+            && self.size.width >= 0.0
+            && self.size.height >= 0.0
+            && point.x.is_finite()
+            && point.y.is_finite()
+            && point.x >= self.origin.x
             && point.y >= self.origin.y
             && point.x < self.origin.x + self.size.width
             && point.y < self.origin.y + self.size.height
@@ -57,9 +65,37 @@ impl Constraints {
         }
     }
     pub fn constrain(self, size: Size) -> Size {
+        let min_width = if self.min.width.is_finite() {
+            self.min.width.max(0.0)
+        } else {
+            0.0
+        };
+        let min_height = if self.min.height.is_finite() {
+            self.min.height.max(0.0)
+        } else {
+            0.0
+        };
+        let max_width = if self.max.width.is_nan() {
+            min_width
+        } else {
+            self.max.width.max(min_width)
+        };
+        let max_height = if self.max.height.is_nan() {
+            min_height
+        } else {
+            self.max.height.max(min_height)
+        };
         Size::new(
-            size.width.clamp(self.min.width, self.max.width),
-            size.height.clamp(self.min.height, self.max.height),
+            if size.width.is_nan() {
+                min_width
+            } else {
+                size.width.clamp(min_width, max_width)
+            },
+            if size.height.is_nan() {
+                min_height
+            } else {
+                size.height.clamp(min_height, max_height)
+            },
         )
     }
 }

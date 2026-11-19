@@ -5,6 +5,14 @@ pub enum Direction {
     Horizontal,
     Vertical,
 }
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum Alignment {
+    Start,
+    Center,
+    End,
+    Stretch,
+}
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum Variant {
     Solid,
@@ -76,6 +84,8 @@ pub struct Component {
     pub(crate) minimum: Size,
     pub(crate) preferred: Option<Size>,
     pub(crate) flex: f32,
+    pub(crate) child_alignment: Alignment,
+    pub(crate) max_child_width: Option<f32>,
 }
 
 impl Component {
@@ -88,6 +98,8 @@ impl Component {
             minimum: Size::new(0.0, 0.0),
             preferred: None,
             flex: 0.0,
+            child_alignment: Alignment::Stretch,
+            max_child_width: None,
         }
     }
     pub fn column(id: impl Into<String>) -> Self {
@@ -121,6 +133,7 @@ impl Component {
                 heading: false,
             },
         );
+        c.minimum = Size::new(0.0, 24.0);
         c.preferred = Some(Size::new(240.0, 24.0));
         c
     }
@@ -132,6 +145,7 @@ impl Component {
                 heading: true,
             },
         );
+        c.minimum = Size::new(0.0, 34.0);
         c.preferred = Some(Size::new(280.0, 34.0));
         c
     }
@@ -150,6 +164,13 @@ impl Component {
         c.minimum = Size::new(64.0, 32.0);
         c
     }
+    pub fn bordered_button(id: impl Into<String>, label: impl Into<String>) -> Self {
+        let mut button = Self::button(id, label).variant(Variant::Bordered);
+        if let ComponentKind::Button { color, .. } = &mut button.kind {
+            *color = SemanticColor::Default;
+        }
+        button
+    }
     pub fn input(id: impl Into<String>, label: impl Into<String>) -> Self {
         let mut c = Self::new(
             id,
@@ -162,7 +183,7 @@ impl Component {
             },
         );
         c.preferred = Some(Size::new(240.0, 52.0));
-        c.minimum = Size::new(120.0, 48.0);
+        c.minimum = Size::new(120.0, 52.0);
         c
     }
     pub fn number_input(id: impl Into<String>, label: impl Into<String>) -> Self {
@@ -173,22 +194,28 @@ impl Component {
         c
     }
     pub fn checkbox(id: impl Into<String>, label: impl Into<String>) -> Self {
-        Self::new(
+        let mut c = Self::new(
             id,
             ComponentKind::Checkbox {
                 label: label.into(),
                 checked: false,
             },
-        )
+        );
+        c.minimum = Size::new(96.0, 24.0);
+        c.preferred = Some(Size::new(160.0, 28.0));
+        c
     }
     pub fn switch(id: impl Into<String>, label: impl Into<String>) -> Self {
-        Self::new(
+        let mut c = Self::new(
             id,
             ComponentKind::Switch {
                 label: label.into(),
                 checked: false,
             },
-        )
+        );
+        c.minimum = Size::new(112.0, 26.0);
+        c.preferred = Some(Size::new(180.0, 30.0));
+        c
     }
     pub fn card(id: impl Into<String>, title: impl Into<String>) -> Self {
         let mut c = Self::new(
@@ -249,26 +276,76 @@ impl Component {
     }
     pub fn gap(mut self, gap: f32) -> Self {
         if let ComponentKind::Stack { gap: g, .. } = &mut self.kind {
-            *g = gap.max(0.0);
+            *g = if gap.is_finite() { gap.max(0.0) } else { 0.0 };
         }
         self
     }
     pub fn padding(mut self, padding: f32) -> Self {
         if let ComponentKind::Stack { padding: p, .. } = &mut self.kind {
-            *p = padding.max(0.0);
+            *p = if padding.is_finite() {
+                padding.max(0.0)
+            } else {
+                0.0
+            };
         }
         self
     }
     pub fn flex(mut self, factor: f32) -> Self {
-        self.flex = factor.max(0.0);
+        self.flex = if factor.is_finite() {
+            factor.max(0.0)
+        } else {
+            0.0
+        };
+        self
+    }
+    /// Set how this stack positions children on its cross axis. Stretch is the
+    /// default; centered alignment respects each child's preferred size.
+    pub fn align_children(mut self, alignment: Alignment) -> Self {
+        if matches!(self.kind, ComponentKind::Stack { .. }) {
+            self.child_alignment = alignment;
+        }
+        self
+    }
+    /// Cap the width of children in a vertical stack and center the capped
+    /// content in the available width. Useful for readable, responsive forms.
+    pub fn max_child_width(mut self, width: f32) -> Self {
+        if matches!(self.kind, ComponentKind::Stack { .. }) {
+            self.max_child_width = Some(if width.is_finite() {
+                width.max(0.0)
+            } else {
+                0.0
+            });
+        }
         self
     }
     pub fn min_size(mut self, width: f32, height: f32) -> Self {
-        self.minimum = Size::new(width.max(0.0), height.max(0.0));
+        self.minimum = Size::new(
+            if width.is_finite() {
+                width.max(0.0)
+            } else {
+                0.0
+            },
+            if height.is_finite() {
+                height.max(0.0)
+            } else {
+                0.0
+            },
+        );
         self
     }
     pub fn preferred_size(mut self, width: f32, height: f32) -> Self {
-        self.preferred = Some(Size::new(width.max(0.0), height.max(0.0)));
+        self.preferred = Some(Size::new(
+            if width.is_finite() {
+                width.max(0.0)
+            } else {
+                0.0
+            },
+            if height.is_finite() {
+                height.max(0.0)
+            } else {
+                0.0
+            },
+        ));
         self
     }
     pub fn variant(mut self, variant: Variant) -> Self {
@@ -286,6 +363,13 @@ impl Component {
     pub fn size(mut self, size: ButtonSize) -> Self {
         if let ComponentKind::Button { size: s, .. } = &mut self.kind {
             *s = size;
+            let (minimum, preferred) = match size {
+                ButtonSize::Small => (Size::new(56.0, 28.0), Size::new(80.0, 30.0)),
+                ButtonSize::Medium => (Size::new(64.0, 32.0), Size::new(100.0, 36.0)),
+                ButtonSize::Large => (Size::new(80.0, 40.0), Size::new(120.0, 44.0)),
+            };
+            self.minimum = minimum;
+            self.preferred = Some(preferred);
         }
         self
     }

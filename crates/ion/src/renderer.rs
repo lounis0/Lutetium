@@ -29,6 +29,7 @@ pub enum DrawCommand {
         width: f32,
     },
     Text {
+        bounds: Rect,
         origin: (f32, f32),
         text: String,
         color: Color,
@@ -66,8 +67,10 @@ fn semantic(color: SemanticColor, theme: &Theme) -> (Color, Color) {
         SemanticColor::Danger => (theme.tokens.danger, Color::rgb(255, 255, 255)),
     }
 }
+#[allow(clippy::too_many_arguments)]
 fn text(
     frame: &mut Frame,
+    bounds: Rect,
     origin: (f32, f32),
     value: &str,
     color: Color,
@@ -77,6 +80,7 @@ fn text(
     font_family: &str,
 ) {
     frame.commands.push(DrawCommand::Text {
+        bounds,
         origin,
         text: value.into(),
         color,
@@ -94,16 +98,23 @@ fn walk(node: &Component, theme: &Theme, interaction: Interaction<'_>, frame: &m
         ComponentKind::Text {
             text: value,
             heading,
-        } => text(
-            frame,
-            (b.origin.x, b.origin.y + if *heading { 25.0 } else { 18.0 }),
-            value,
-            t.foreground,
-            if *heading { 22.0 } else { t.font_size },
-            *heading,
-            false,
-            &t.font_family,
-        ),
+        } => {
+            let font_size = if *heading { 22.0 } else { t.font_size };
+            text(
+                frame,
+                b,
+                (
+                    b.origin.x,
+                    b.origin.y + ((b.size.height - font_size) * 0.5).max(0.0),
+                ),
+                value,
+                t.foreground,
+                font_size,
+                *heading,
+                false,
+                &t.font_family,
+            );
+        }
         ComponentKind::Button {
             label,
             variant,
@@ -131,12 +142,14 @@ fn walk(node: &Component, theme: &Theme, interaction: Interaction<'_>, frame: &m
                 t.muted
             } else if *variant == Variant::Solid {
                 on
+            } else if *color == SemanticColor::Default {
+                t.foreground
             } else {
                 base
             };
             let stroke = if interaction.focused == Some(node.id()) {
                 t.primary
-            } else if *variant == Variant::Bordered {
+            } else if *variant == Variant::Bordered && *color != SemanticColor::Default {
                 base
             } else {
                 t.border
@@ -154,9 +167,10 @@ fn walk(node: &Component, theme: &Theme, interaction: Interaction<'_>, frame: &m
             };
             text(
                 frame,
+                b,
                 (
                     b.origin.x + b.size.width * 0.5,
-                    b.origin.y + (b.size.height + fs) * 0.5 - 3.0,
+                    b.origin.y + ((b.size.height - fs) * 0.5).max(0.0),
                 ),
                 label,
                 fg,
@@ -175,7 +189,8 @@ fn walk(node: &Component, theme: &Theme, interaction: Interaction<'_>, frame: &m
         } => {
             text(
                 frame,
-                (b.origin.x, b.origin.y + 13.0),
+                b,
+                (b.origin.x, b.origin.y + 1.0),
                 label,
                 t.muted,
                 12.0,
@@ -204,9 +219,10 @@ fn walk(node: &Component, theme: &Theme, interaction: Interaction<'_>, frame: &m
             });
             text(
                 frame,
+                field,
                 (
                     field.origin.x + 10.0,
-                    field.origin.y + field.size.height * 0.5 + 5.0,
+                    field.origin.y + ((field.size.height - t.font_size) * 0.5).max(0.0),
                 ),
                 if value.is_empty() { placeholder } else { value },
                 if value.is_empty() {
@@ -221,7 +237,12 @@ fn walk(node: &Component, theme: &Theme, interaction: Interaction<'_>, frame: &m
             );
         }
         ComponentKind::Checkbox { label, checked } => {
-            let r = Rect::new(b.origin.x, b.origin.y + 3.0, 18.0, 18.0);
+            let r = Rect::new(
+                b.origin.x,
+                b.origin.y + ((b.size.height - 18.0) * 0.5).max(0.0),
+                18.0,
+                18.0,
+            );
             frame.commands.push(DrawCommand::RoundRect {
                 bounds: r,
                 fill: if *checked { t.primary } else { t.surface },
@@ -248,7 +269,11 @@ fn walk(node: &Component, theme: &Theme, interaction: Interaction<'_>, frame: &m
             }
             text(
                 frame,
-                (b.origin.x + 26.0, b.origin.y + 17.0),
+                b,
+                (
+                    b.origin.x + 26.0,
+                    b.origin.y + ((b.size.height - t.font_size) * 0.5).max(0.0),
+                ),
                 label,
                 t.foreground,
                 t.font_size,
@@ -258,7 +283,12 @@ fn walk(node: &Component, theme: &Theme, interaction: Interaction<'_>, frame: &m
             );
         }
         ComponentKind::Switch { label, checked } => {
-            let track = Rect::new(b.origin.x, b.origin.y + 3.0, 36.0, 20.0);
+            let track = Rect::new(
+                b.origin.x,
+                b.origin.y + ((b.size.height - 20.0) * 0.5).max(0.0),
+                36.0,
+                20.0,
+            );
             frame.commands.push(DrawCommand::RoundRect {
                 bounds: track,
                 fill: if *checked { t.primary } else { t.muted },
@@ -271,7 +301,7 @@ fn walk(node: &Component, theme: &Theme, interaction: Interaction<'_>, frame: &m
             });
             let thumb = Rect::new(
                 b.origin.x + if *checked { 19.0 } else { 3.0 },
-                b.origin.y + 6.0,
+                track.origin.y + 3.0,
                 14.0,
                 14.0,
             );
@@ -283,7 +313,11 @@ fn walk(node: &Component, theme: &Theme, interaction: Interaction<'_>, frame: &m
             });
             text(
                 frame,
-                (b.origin.x + 44.0, b.origin.y + 17.0),
+                b,
+                (
+                    b.origin.x + 44.0,
+                    b.origin.y + ((b.size.height - t.font_size) * 0.5).max(0.0),
+                ),
                 label,
                 t.foreground,
                 t.font_size,
@@ -301,7 +335,8 @@ fn walk(node: &Component, theme: &Theme, interaction: Interaction<'_>, frame: &m
             });
             text(
                 frame,
-                (b.origin.x + 16.0, b.origin.y + 24.0),
+                b,
+                (b.origin.x + 16.0, b.origin.y + 12.0),
                 title,
                 t.foreground,
                 16.0,
@@ -338,11 +373,30 @@ mod tests {
         assert!(f.commands().iter().any(
             |c| matches!(c,DrawCommand::RoundRect{fill,..}if *fill==Theme::light().tokens.primary)
         ));
-        assert!(f
-            .commands()
-            .iter()
-            .any(|c| matches!(c,DrawCommand::Text{text,..}if text=="Continue")));
+        assert!(f.commands().iter().any(|command| matches!(
+            command,
+            DrawCommand::Text { bounds, text, .. }
+                if text == "Continue" && *bounds == root.find("ok").unwrap().bounds()
+        )));
     }
+    #[test]
+    fn default_bordered_button_has_visible_text_and_border() {
+        let mut root =
+            Component::column("root").push(Component::bordered_button("default", "Default"));
+        layout::compute(&mut root, Rect::new(0.0, 0.0, 200.0, 80.0)).unwrap();
+        let frame = build_frame(&root, &Theme::light(), Interaction::default());
+        assert!(frame.commands().iter().any(|command| matches!(
+            command,
+            DrawCommand::Text { text, color, .. }
+                if text == "Default" && *color == Theme::light().tokens.foreground
+        )));
+        assert!(frame.commands().iter().any(|command| matches!(
+            command,
+            DrawCommand::RoundRect { stroke, .. }
+                if *stroke == Theme::light().tokens.border
+        )));
+    }
+
     #[test]
     fn interaction_changes_resolved_frame() {
         let mut root = Component::column("root")

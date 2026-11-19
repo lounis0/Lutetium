@@ -15,6 +15,10 @@ pub mod native_window {
     //! Native window/event-loop implementation, isolated from widgets.
 }
 #[cfg(windows)]
+mod direct2d;
+#[cfg(windows)]
+mod input;
+#[cfg(windows)]
 mod windows;
 #[cfg(windows)]
 pub use windows::run;

@@ -5,15 +5,15 @@ ION 0.5 is introduced as a separate `lutetium-ion` Rust crate. It does not add c
 ## Architecture
 
 - `component`, `layout`, `theme`, `event`, and `renderer`: platform-neutral component model, stack layout, semantic design tokens, input/application events, and draw-command frame generation.
-- `backend`: platform selection and native application integration. The initial backend lives in `backend/windows.rs` and consumes the backend-neutral draw frame.
+- `backend`: platform selection and native application integration. The Windows backend in `backend/windows.rs` consumes backend-neutral draw frames and uses Direct2D/DirectWrite with a GDI fallback.
 - `examples/ion`: calculator and reusable component gallery implemented against the Rust library.
 
-The first renderer uses Win32 GDI. It is a genuine native renderer and is not GPU accelerated. Direct2D/DirectWrite, SVG paths, clipping/layers, shadows/gradients, DPI-aware geometry, native accessibility APIs, window maximize/minimize policies, and non-Windows backends are not implemented. GDI fonts currently use Segoe UI; typography tokens affect point sizing/weight, while font-family substitution is not yet exposed.
+The Windows renderer uses Direct2D/DirectWrite (default render-target acceleration where available) and falls back to Win32 GDI if renderer setup or drawing fails. Direct2D antialiases vector geometry, uses ClearType text, and draws rounded borders slightly inset to avoid clipping their antialiased edge. Pointer motion avoids duplicate-position work and repaints only when hover or callback-driven UI state changes; Direct2D targets survive minimization and are recreated after device loss. Both paths support text clipping to component bounds; the window is per-monitor DPI aware and layout/input coordinates use logical units. GDI is not GPU accelerated. SVG paths, general clipping layers, shadows/gradients, native accessibility APIs, window maximize/minimize policies, and non-Windows backends are not implemented. GDI text uses the configured font family and size/weight; DirectWrite caches brushes and text formats.
 
 ## Current first slice
 
 - Native window creation, resize and close event handling, client-area paint and message loop.
-- Backend-neutral fill/stroke/rounded-rectangle/line/text draw commands.
+- Backend-neutral fill/stroke/rounded-rectangle/line/text draw commands, with per-component text bounds and clipping.
 - Stable component IDs, nested row/column stacks, padding/gap, minimum/preferred sizing and flex allocation.
 - Shared light/dark/customizable semantic tokens.
 - Text/heading, themed buttons, text/number input, checkbox/switch selection, card and divider components.
@@ -52,4 +52,4 @@ cargo run -p lutetium-ion --example calculator
 cargo run -p lutetium-ion --example component_gallery
 ```
 
-The two `run` commands open native interactive windows and are not headless tests. A Windows native-window integration test uses Win32 window messages to exercise the click event and shutdown path; it does not automate physical mouse input.
+Run the automated suite on Windows with the installed MSVC Rust target, or cross-check compilation against the GNU target. The GNU linker on some systems requires a working `dlltool` to run linked test binaries. The two `run` commands open native interactive windows and are not headless tests. A Windows native-window integration test uses Win32 window messages to exercise click, text-input, selection callbacks and shutdown; it does not automate physical mouse input.

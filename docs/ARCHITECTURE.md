@@ -98,9 +98,9 @@ does not inject physical mouse input. Window destruction posts thread-wide
 
 `lutetium-ion` 0.5.0 provides a platform-neutral component tree, stack layout,
 semantic themes, events/state, backend-neutral draw commands, and starter
-controls. Its initial backend renders windows and components with Win32 GDI;
-examples include a calculator and component gallery. This API is Rust-only and
-does not alter Lutetium syntax or the language GUI ABI. It is not a general-
-purpose framework, is not GPU accelerated, and does not currently provide
-non-Windows backends, DPI-aware geometry or native accessibility integration.
-See [`ION_0.5.md`](ION_0.5.md).
+controls. Its Windows backend uses Direct2D/DirectWrite with a GDI fallback,
+per-monitor DPI handling and component-bounded text clipping; examples include
+a calculator and component gallery. This API is Rust-only and does not alter
+Lutetium syntax or the language GUI ABI. It does not currently provide
+non-Windows backends or native accessibility integration. See
+[`ION_0.5.md`](ION_0.5.md).

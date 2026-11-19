@@ -9,6 +9,17 @@ description = "A modular native UI foundation for Lutetium"
 name = "lutetium_ion"
 path = "src/lib.rs"
 
+[target.'cfg(windows)'.dependencies]
+windows = { version = "=0.61.3", features = [
+    "Win32_Foundation",
+    "Foundation_Numerics",
+    "Win32_Graphics_Direct2D",
+    "Win32_Graphics_Direct2D_Common",
+    "Win32_Graphics_DirectWrite",
+    "Win32_Graphics_Dxgi_Common",
+] }
+windows-numerics = "=0.2.0"
+
 [[example]]
 name = "calculator"
 path = "../../examples/ion/calculator.rs"

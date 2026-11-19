@@ -33,7 +33,9 @@ pub mod window {
 }
 pub mod components {
     //! Reusable native controls and layout nodes.
-    pub use crate::{ButtonSize, Component, ComponentKind, Direction, SemanticColor, Variant};
+    pub use crate::{
+        Alignment, ButtonSize, Component, ComponentKind, Direction, SemanticColor, Variant,
+    };
 }
 pub mod layout_api {
     //! Backend-independent geometry and stack layout.
@@ -56,11 +58,16 @@ pub mod application {
 }
 pub mod backend;
 
-pub use component::{ButtonSize, Component, ComponentKind, Direction, SemanticColor, Variant};
+pub use component::{
+    Alignment, ButtonSize, Component, ComponentKind, Direction, SemanticColor, Variant,
+};
 pub use event::{Event, Key};
 pub use geometry::{Constraints, Point, Rect, Size};
 pub use layout::{compute as layout, LayoutError};
 pub use theme::{Color, Theme, ThemeMode, Tokens};
+
+/// Callback used to handle application events and update component/theme state.
+pub type EventHandler = Box<dyn FnMut(Event, &mut Component, &mut Theme)>;
 
 /// A native ION application. The component tree and event contract are
 /// platform-independent; `run` selects the native backend for this target.
@@ -69,7 +76,7 @@ pub struct Application {
     size: Size,
     theme: Theme,
     root: Component,
-    on_event: Box<dyn FnMut(Event, &mut Component, &mut Theme)>,
+    on_event: EventHandler,
 }
 
 impl Application {
@@ -112,15 +119,7 @@ impl Application {
         backend::run(self)
     }
 
-    pub(crate) fn into_parts(
-        self,
-    ) -> (
-        String,
-        Size,
-        Theme,
-        Component,
-        Box<dyn FnMut(Event, &mut Component, &mut Theme)>,
-    ) {
+    pub(crate) fn into_parts(self) -> (String, Size, Theme, Component, EventHandler) {
         (self.title, self.size, self.theme, self.root, self.on_event)
     }
 }
