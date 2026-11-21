@@ -2,12 +2,13 @@
 
 User-visible release notes for Lutetium. The independent `lutetium-ion` crate maintains a separate version stream and is called out separately where relevant.
 
-## 0.4.4 — working tree (unreleased)
+## 0.4.4 — 2026-11-21
 
-This section records the 0.4.4 changes and their validation limits. The commit
-containing these changes is not a release tag or publication. Release notes
-should be finalized only after the complete target-appropriate test suite is
-verified.
+Lutetium 0.4.4 aligns the workspace, CLI, standalone native runtime metadata,
+and error catalog. `lutetium-ion` remains independently versioned. The release
+adds strict single-entry project scaffolding and workflows, improves CLI flag
+validation and JSON diagnostics, and documents future `.LTM` boundaries without
+adding a parser or runtime.
 
 ### Improved
 - Strengthened CLI `run`, `check`, and `build` flag validation for unknown, duplicate, missing, inline, and invalid values; added regression coverage.
@@ -18,8 +19,8 @@ verified.
 ### Version alignment
 - Aligned the Lutetium workspace crates, CLI lockfile entries, standalone runtime manifest, and error catalog language version to 0.4.4. `lutetium-ion` keeps its independent version.
 
-### Validation limitations
-- See [`audit/TEST_RESULTS.md`](audit/TEST_RESULTS.md). The full workspace test command is currently blocked in this environment by Cargo's failure to spawn the pinned GNU `dlltool`; focused compiler/VM/CLI and native integration checks are recorded separately.
+### Validation
+- GitHub Actions Windows x86_64 GNU CI passed formatting, workspace check/build/test, and release build for the release commit. The complete-workspace test result and focused local results are recorded in [`audit/TEST_RESULTS.md`](audit/TEST_RESULTS.md). A local attempt to run the workspace suite remains blocked because this machine's pinned GNU `dlltool.exe` fails to spawn a child process.
 
 ## 0.4.3 — 2026-11-18
 

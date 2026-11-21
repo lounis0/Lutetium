@@ -1,6 +1,6 @@
 # Test results — Lutetium 0.4.4 worktree
 
-This is an in-progress local verification record for the current **uncommitted** worktree. It is not a release statement. Results are from Windows using the pinned `stable-x86_64-pc-windows-gnu` Rust 1.96.0 toolchain unless the command explicitly selects another target.
+This records local focused results and hosted CI for the 0.4.4 release commit. The local source tree uses Windows and the pinned `stable-x86_64-pc-windows-gnu` Rust 1.96.0 toolchain unless the command explicitly selects another target. Local workspace tests remain blocked by a toolchain child-process issue; the hosted CI results are reported separately.
 
 ## Verified in this worktree
 
@@ -8,10 +8,10 @@ This is an in-progress local verification record for the current **uncommitted**
 |---|---|
 | `cargo fmt --all -- --check` | Passed after formatting the current edits. |
 | `cargo check --workspace --all-targets --offline` | Passed with workspace version 0.4.4 and ION's independently versioned crate. |
-| `cargo clippy --workspace --all-targets --offline -- -D warnings` | Passed after fixing existing warnings and the CLI validation changes. |
+| `cargo clippy --workspace --all-targets --offline -- -D warnings` | Passed locally after fixing existing warnings and CLI validation changes. |
 | `cargo test -p lu-vm --offline` | Passed: 8 unit tests. |
 | `cargo test -p lu-compiler --offline` | Passed: 116 end-to-end tests, including iteration, list equality, GC stress, and verifier regressions. |
-| `cargo test -p lutetium-cli --offline --test cli` | Passed: 19 integration tests, including file/project workflows, runnable project-native console build, GUI-subsystem project executable/PE check, JSON diagnostics, and CLI flag validation. |
+| `cargo test -p lutetium-cli --offline --test cli` | Passed locally: 19 integration tests, including file/project workflows, runnable project-native console build, GUI-subsystem project executable/PE check, JSON diagnostics, and CLI flag validation. |
 | `cargo run -p lutetium-cli --offline -- run examples/hello.lu` | Passed; output includes `Hello from Lutetium` and `15`. |
 | `cargo run -p lutetium-cli --offline -- run examples/fibonacci.lu` | Passed; output `55`. |
 | `cargo run -p lutetium-cli --offline -- run examples/maps.lu` | Passed; output includes expected map values and `1225`. |
@@ -20,7 +20,13 @@ This is an in-progress local verification record for the current **uncommitted**
 | `cargo test -p lu-native --offline --test native_gui` | Passed: 1 deterministic Win32 button-notification/callback case. It uses `BM_CLICK`, not physical mouse input. |
 | `cargo test -p lu-diagnostics --offline`; `cargo test -p lutetium-cli --offline --lib` | Passed: 2 diagnostics tests and 4 project-manifest/scaffolding unit tests. |
 
-## Blocked / not established
+## Hosted validation
+
+| Workflow | Result |
+|---|---|
+| GitHub Actions `CI` on pushed commit `3b5c75b046c6b8c166dd248356891d3cc6908464` (Windows x86_64 GNU) | Passed: format, workspace check, workspace build, full workspace test, and release build. Run [44916830839](https://github.com/lounis0/Lutetium/actions/runs/44916830839). |
+
+## Local blocked / not established
 
 | Command/check | Result |
 |---|---|
@@ -36,13 +42,13 @@ The GNU self-contained toolchain files are present, including `x86_64-w64-mingw3
 
 ## Test accounting
 
-The known subsets above intentionally overlap. Do not sum them into a workspace total. The last recorded release-wide workspace count (192 tests) belongs to the **0.4.3** validation record before the current project-workflow, diagnostics, and version changes. This file makes no claim of a full-workspace test pass for 0.4.4.
+The local focused subsets above intentionally overlap; do not sum them into a workspace total. The 0.4.4 hosted CI run passed the full workspace suite; no local test total is inferred from the focused results.
 
 For reproducible correctness smoke checks (not performance measurement), see [`../scripts/benchmark_agent.ps1`](../scripts/benchmark_agent.ps1) and its scope notes in [`../docs/AGENT_GUIDE.md`](../docs/AGENT_GUIDE.md).
 
 ## Preserved historical snapshots (original audit text)
 
-The following 0.4.3 and 0.4.2 records are retained verbatim from the prior audit version. Their original present-tense phrasing refers to the historical snapshot only; do not use it as evidence for the current worktree.
+The following 0.4.3 and 0.4.2 records are retained verbatim from the prior audit version. Their original present-tense phrasing refers to those historical snapshots only.
 
 # Test results — Lutetium 0.4.3
 
