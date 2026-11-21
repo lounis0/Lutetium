@@ -1,6 +1,6 @@
 {
   "format_version": 1,
-  "language_version": "0.4.3",
+  "language_version": "0.4.4",
   "codes": [
     {"code":"E1001","name":"lexical_error","summary":"Unexpected character, unknown string escape, or unterminated string literal.","fix":"Check the highlighted characters and close every string on the same line."},
     {"code":"E1101","name":"integer_literal_overflow","summary":"Integer literal does not fit in signed 64-bit int.","fix":"Use a smaller literal; the maximum is 9223372036854775807."},

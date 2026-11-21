@@ -35,3 +35,7 @@ Desktop.ini
 # Logs and temporary output
 *.log
 *.tmp
+.DS_Store
+__pycache__/
+*.py[cod]
+*.pyo

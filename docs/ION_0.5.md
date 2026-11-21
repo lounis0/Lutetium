@@ -52,4 +52,4 @@ cargo run -p lutetium-ion --example calculator
 cargo run -p lutetium-ion --example component_gallery
 ```
 
-Run the automated suite on Windows with the installed MSVC Rust target, or cross-check compilation against the GNU target. The GNU linker on some systems requires a working `dlltool` to run linked test binaries. The two `run` commands open native interactive windows and are not headless tests. A Windows native-window integration test uses Win32 window messages to exercise click, text-input, selection callbacks and shutdown; it does not automate physical mouse input.
+Run the automated suite on Windows with the pinned GNU toolchain and its linker helpers. If Cargo cannot launch the GNU `dlltool` while building Windows dependencies, record that run as blocked; a successful MSVC compile/check is not equivalent to a GNU test or Win32 integration run. The two `run` commands open native interactive windows and are not headless tests. A Windows native-window integration test uses Win32 window messages to exercise click, text-input, selection callbacks and shutdown; it does not automate physical mouse input.

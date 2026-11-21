@@ -1,7 +1,7 @@
-# Language specification — Lutetium 0.4.3
+# Language specification — Lutetium 0.4.4
 
 This document describes the implemented language subset in workspace version
-0.4.3. The bytecode VM is the broadest execution target; native Windows x64
+0.4.4. The bytecode VM is the broadest execution target; native Windows x64
 GNU and the experimental ION GUI target support narrower subsets. Features
 not listed (imports/modules, structs, enums, pattern matching, generics,
 closures, async, string interpolation, exponent literals) are not implemented.
@@ -125,7 +125,7 @@ The Lutetium language `--target gui` build supports a deliberately small GUI sur
 * `handler` must be a named Lutetium function taking one `window` and returning `unit`; for example `fn on_click(window: window) { gui_close(window) }`.
 * `gui_run(window)` runs the Win32 message loop. `gui_close(window)` destroys the window and exits that loop.
 
-This prototype is Windows x86_64 GNU only and is not available in the bytecode VM. The verified integration test sends `BM_CLICK` to a real Win32 button control; it does not automate a physical mouse click. Duplicate or clamped IDs can collide in the native control namespace, although callback dispatch distinguishes child HWNDs. Only one message loop is supported: destroying any window posts thread-wide `WM_QUIT`, so multiple windows are not independently managed. The language GUI API does not include custom rendering, layouts, keyboard events, GUI state or DPI scaling. The separate Rust ION crate provides a limited component/layout/theme/event API with a Windows GDI renderer; it is not cross-platform or a general-purpose framework. See `docs/ION_0.5.md` and `examples/ion_button.lu`.
+This prototype is Windows x86_64 GNU only and is not available in the bytecode VM. The verified integration test sends `BM_CLICK` to a real Win32 button control; it does not automate a physical mouse click. Duplicate or clamped IDs can collide in the native control namespace, although callback dispatch distinguishes child HWNDs. Only one message loop is supported: destroying any window posts thread-wide `WM_QUIT`, so multiple windows are not independently managed. The language GUI API does not include custom rendering, layouts, keyboard events, GUI state or DPI scaling. The separate Rust ION crate provides a limited component/layout/theme/event API with a Windows Direct2D/DirectWrite renderer and GDI fallback; its Windows backend is per-monitor-DPI-aware, but the library is not cross-platform or a general-purpose framework. See `docs/ION_0.5.md` and `examples/ion_button.lu`.
 
 ### Lists
 

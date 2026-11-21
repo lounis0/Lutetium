@@ -1,8 +1,7 @@
 # BLOCKED_TASKS.md
 
-Only tasks that cannot proceed in this environment live here. Everything else
-stays in TASKS.md as NOT STARTED.
+Historical blocker ledger; not the current blocker/status source. See `../audit/TEST_RESULTS.md` for the current GNU `dlltool` issue. Preserve this as historical context unless the project later reopens its old development-task system.
 
 | ID | Task | Blocker | Workaround / unblock condition |
 |---|---|---|---|
-| K3 | Delete inert scratch test files (`scratch_dump.rs`, `scratch_ir.rs`) | Older sandbox could not delete files; re-verify this session. | Delete in any environment where file removal works. |
+| K3 | Delete inert scratch test files (`scratch_dump.rs`, `scratch_ir.rs`) | Historical item; the tracked `crates/native/tests/scratch_ir.rs` placeholder was removed in the 2026-11-20 cleanup. | No action. |

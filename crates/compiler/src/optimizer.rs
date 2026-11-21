@@ -190,13 +190,13 @@ fn fold_bin(op: BinOp, ty: Ty, a: Option<Const>, b: Option<Const>) -> Option<Con
                 _ => return None,
             };
             use std::cmp::Ordering::*;
-            Const::Bool(match (op, ord) {
+            Const::Bool(matches!(
+                (op, ord),
                 (BinOp::Lt, Less)
-                | (BinOp::Le, Less | Equal)
-                | (BinOp::Gt, Greater)
-                | (BinOp::Ge, Greater | Equal) => true,
-                _ => false,
-            })
+                    | (BinOp::Le, Less | Equal)
+                    | (BinOp::Gt, Greater)
+                    | (BinOp::Ge, Greater | Equal)
+            ))
         }
         _ => return None,
     })
@@ -337,9 +337,11 @@ fn reads(instr: &IrInstr) -> Vec<u16> {
 /// Block-local CSE: within one block, an arithmetic/comparison instruction
 /// with operands identical to an earlier instruction of the same kind reuses
 /// the earlier result. Only pure ops participate (no calls, no prints).
+type CseKey = (u8, u8, u8, u16, u16);
+
 fn block_local_cse(f: &mut IrFunction) {
     for block in &mut f.blocks {
-        let mut table: Vec<((u8, u8, u8, u16, u16), u16)> = Vec::new();
+        let mut table: Vec<(CseKey, u16)> = Vec::new();
         let mut out = Vec::with_capacity(block.instrs.len());
         for instr in block.instrs.drain(..) {
             let key: Option<(u8, u8, u8, u16, u16)> = match &instr {

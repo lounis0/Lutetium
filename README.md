@@ -1,6 +1,6 @@
 # Lutetium
 
-**Lutetium 0.4.3** is an experimental, statically typed programming language and compiler implemented in Rust. It aims to offer a compact, readable language for small programs while making the path from source to execution explicit: a hand-written frontend, typed register IR, verified bytecode and VM, plus an experimental Windows native backend.
+**Lutetium 0.4.4** is an experimental, statically typed programming language and compiler implemented in Rust. It aims to offer a compact, readable language for small programs while making the path from source to execution explicit: a hand-written frontend, typed register IR, verified bytecode and VM, plus an experimental Windows native backend.
 
 Lutetium is written in Rust; it is not Rust syntax or a Python implementation. Its syntax favors familiar, readable expressions, while using explicit types where useful, braces for blocks, and static checking. The VM and compiler use Rust, and generated native executables are standalone Windows programs.
 
@@ -20,19 +20,35 @@ Lutetium is written in Rust; it is not Rust syntax or a Python implementation. I
 - Homogeneous lists (with integer-to-float widening), record-like maps with fixed keys, and deep list equality.
 - String, math, filesystem and collection built-ins in the bytecode VM.
 - LTBC v5 bytecode serialization, an independent verifier, a register-machine VM, and a generational tracing collector for VM list/map values.
-- CLI commands: `run`, `build`, `check`, `inspect`, `explain`, and help/version output.
+- CLI commands: `new`, `run`, `build`, `check`, `inspect`, `explain`, `doctor`, and help/version output.
 - Experimental Windows x86_64 GNU native console backend for a subset of scalar programs. Unsupported native operations are rejected instead of silently treated as supported.
 
 ### Experimental
 
 - **Language-level `gui_*` API:** Windows x86_64 GNU native GUI-subsystem executable with a Win32 window, standard push buttons, named `window -> unit` callbacks, a message loop, and close. This remains a small independent prototype. Its native integration test uses Win32 `BM_CLICK` to validate notification/callback dispatch; it does not test physical mouse input. The bytecode VM reports GUI APIs as unavailable.
-- **ION Rust UI crate (`lutetium-ion` 0.5.0):** separate from Lutetium syntax and the legacy `gui_*` API. Provides a Windows GDI-rendered component tree, basic row/column layout, themes, events/state and starter controls, with calculator and component-gallery examples. It is not GPU accelerated and is not a general-purpose or cross-platform UI framework. See [`docs/ION_0.5.md`](docs/ION_0.5.md).
+- **ION Rust UI crate (`lutetium-ion`):** separate from Lutetium syntax and the legacy `gui_*` API. Provides a Windows Direct2D/DirectWrite renderer with a GDI fallback, per-monitor-DPI-aware geometry and input, component-clipped text, basic row/column layout, themes, events/state and starter controls, with calculator and component-gallery examples. The Direct2D backend uses the default render-target type (hardware acceleration where available with a supported software fallback); GDI is the fallback if setup or drawing fails. This is not a GPU-acceleration guarantee, nor a general-purpose or cross-platform UI framework. See [`docs/ION_0.5.md`](docs/ION_0.5.md).
 
 ### Not implemented
 
-Imports/modules, closures, structs/enums, generics, async, a package manager, a standard library module tree, and cross-platform native code generation are not implemented. ION does not currently provide native accessibility integration, DPI-aware layout, or non-Windows backends. These are future work, not current capabilities.
+Imports/modules, closures, structs/enums, generics, async, a package manager, a standard library module tree, and cross-platform native code generation are not implemented. ION does not currently provide native accessibility integration, advanced widget systems, or non-Windows backends. These are future work, not current capabilities.
 
 ## Getting started
+
+### Create a project
+
+The CLI can scaffold a console app or the existing experimental native Win32 GUI prototype:
+
+```powershell
+lutetium new MyApp
+cd MyApp
+lutetium check
+lutetium run
+lutetium build
+```
+
+A console project builds to `dist/MyApp.exe` using the current Windows x64 GNU native backend. The generated console program can run with `lutetium run` or as its executable. To create the native GUI prototype, use `lutetium new MyApp --template gui`; `lutetium build` selects its GUI subsystem target and writes `dist/MyApp.exe`. The GUI template uses the implemented `gui_window`/`gui_button`/`gui_run`/`gui_close` API; it is not the separate Rust `lutetium-ion` component framework. Projects contain `lutetium.toml` and `src/main.lu`. This initial manifest supports only `name`, `entry`, and `kind`; it does not add module imports or multi-file compilation.
+
+`run`, `check`, and `build` accept a project directory or an individual `.lu` file. Individual-file commands keep their existing behavior and output locations. Project builds write named artifacts into `dist/`; console project builds default to the native console executable, while GUI project builds select the GUI subsystem.
 
 ### Prerequisites and supported platform
 
@@ -92,7 +108,7 @@ The VM verifies bytecode before execution, but **Lutetium is not a sandbox**: fi
 ION currently means two separate things in this repository:
 
 1. The existing Lutetium `gui_window`, `gui_button`, `gui_run`, and `gui_close` language built-ins. They remain experimental and backward-compatible; build them with `lutetium build app.lu --target gui`. They only work in Windows x86_64 GNU GUI-subsystem executables, not in the VM.
-2. The independent Rust package `lutetium-ion` 0.5.0, which provides GDI-rendered native windows, a small reusable component/layout/theme/event foundation, and Rust examples:
+2. The independent Rust package `lutetium-ion`, which provides Direct2D/DirectWrite-rendered native windows with a GDI fallback, a small reusable component/layout/theme/event foundation, and Rust examples:
 
    ```powershell
    cargo test -p lutetium-ion
@@ -101,7 +117,7 @@ ION currently means two separate things in this repository:
    cargo run -p lutetium-ion --example component_gallery
    ```
 
-   The last two commands open interactive native windows. The backend is Windows-only GDI, not GPU accelerated. These examples do not use the Lutetium `gui_*` built-ins. Detailed scope, API and limitations are in [`docs/ION_0.5.md`](docs/ION_0.5.md).
+   The last two commands open interactive native windows. Direct2D uses the platform default render-target type, with supported software fallback; GDI is used if Direct2D setup/drawing fails. Do not assume GPU execution. These examples do not use the Lutetium `gui_*` built-ins. Detailed scope, API and limitations are in [`docs/ION_0.5.md`](docs/ION_0.5.md).
 
 ## Architecture
 
@@ -128,20 +144,21 @@ Run at the repository root with the pinned Windows GNU toolchain:
 
 ```powershell
 cargo fmt --all -- --check
-cargo check --workspace
-cargo build --workspace
-cargo test --workspace
-cargo build --release
-cargo build -p lutetium-ion --examples
-cargo check -p lutetium-ion --target x86_64-pc-windows-gnu --all-targets
+cargo check --workspace --all-targets --offline
+cargo clippy --workspace --all-targets --offline -- -D warnings
+cargo test -p lu-vm --offline
+cargo test -p lu-compiler --offline
+cargo test -p lutetium-cli --offline --test cli
+cargo test --workspace --offline
+cargo build --workspace --release --offline
 ```
 
-The native GUI integration tests create real Win32 windows and controls. They exercise deterministic native message/callback dispatch, not physical mouse automation. See [`CONTRIBUTING.md`](CONTRIBUTING.md) for coding and test conventions. Language examples use `.lu`; `examples/regression/` also contains intentionally invalid compiler fixtures, so not every file in that folder is expected to run.
+The pinned GNU toolchain test run may be blocked if Cargo cannot spawn its bundled `dlltool`; report the precise result rather than substituting an MSVC check. Native GUI integration uses deterministic Win32 `BM_CLICK` dispatch, not physical mouse automation. The interactive ION examples open windows and need visual/manual checks. See [`CONTRIBUTING.md`](CONTRIBUTING.md), [`docs/AGENT_GUIDE.md`](docs/AGENT_GUIDE.md), and [`audit/TEST_RESULTS.md`](audit/TEST_RESULTS.md) for commands and verified versus blocked coverage. Language examples use `.lu`; `examples/regression/` contains known compiler regression fixtures, not only runnable programs.
 
 ## Roadmap
 
-Completed in this release: preserve and integrate ION as a separate crate, test its Windows native window/input lifecycle, improve native integer-overflow parity, and update the 0.4.3 release documentation and version metadata. Future priorities are hardening bytecode decoding/verifier invariants, improving native runtime allocation/recursion/error behavior, making layout/input behavior more robust in ION, and investigating portability and accessibility as separately scoped projects. The native console backend, legacy GUI API, and ION remain experimental. See [`audit/ROADMAP.md`](audit/ROADMAP.md).
+The 0.4.3 release added ION and native arithmetic fixes. Current 0.4.4 worktree updates and verification limits are described in [`CHANGELOG.md`](CHANGELOG.md) and [`audit/TEST_RESULTS.md`](audit/TEST_RESULTS.md). Future priorities include hardening bytecode decoding/verifier invariants, improving native runtime allocation/recursion/error behavior, and separately investigating portability and accessibility. `.LTM` integration is documentation-only; see [`docs/LTM_INTEGRATION.md`](docs/LTM_INTEGRATION.md). The native console backend, legacy GUI API, and ION remain experimental. See [`audit/ROADMAP.md`](audit/ROADMAP.md).
 
-## Lutetium 0.4.3
+## Lutetium 0.4.4
 
-This repository targets **Lutetium 0.4.3**. See [`CHANGELOG.md`](CHANGELOG.md) for changes and [GitHub releases](https://github.com/lounis0/Lutetium/releases) for published release records and any actual assets.
+This working tree aligns the Lutetium crates to **0.4.4**; it is not a claim that a 0.4.4 release has been published. See [`CHANGELOG.md`](CHANGELOG.md) and [`audit/TEST_RESULTS.md`](audit/TEST_RESULTS.md) for the change summary and the exact current validation limits. Check [GitHub releases](https://github.com/lounis0/Lutetium/releases) for published release records and assets.

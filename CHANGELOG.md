@@ -1,6 +1,25 @@
 # Changelog
 
-User-visible release notes for Lutetium. The independent `lutetium-ion` crate has its own 0.5.0 version and is called out separately where relevant.
+User-visible release notes for Lutetium. The independent `lutetium-ion` crate maintains a separate version stream and is called out separately where relevant.
+
+## 0.4.4 — working tree (unreleased)
+
+This section records the 0.4.4 changes and their validation limits. The commit
+containing these changes is not a release tag or publication. Release notes
+should be finalized only after the complete target-appropriate test suite is
+verified.
+
+### Improved
+- Strengthened CLI `run`, `check`, and `build` flag validation for unknown, duplicate, missing, inline, and invalid values; added regression coverage.
+- Added strict one-entry project scaffolding/workflows, native console and GUI-subsystem project builds, and source-line text in JSON diagnostics; project builds emit named files under `dist/`.
+- Removed the inert comment-only native scratch test after checking repository references; retained scratch-named `.lu` files because they are meaningful iteration, equality, and diagnostic regression cases.
+- Resolved all current workspace Clippy warnings and documented future `.LTM` integration boundaries without adding a parser or runtime.
+
+### Version alignment
+- Aligned the Lutetium workspace crates, CLI lockfile entries, standalone runtime manifest, and error catalog language version to 0.4.4. `lutetium-ion` keeps its independent version.
+
+### Validation limitations
+- See [`audit/TEST_RESULTS.md`](audit/TEST_RESULTS.md). The full workspace test command is currently blocked in this environment by Cargo's failure to spawn the pinned GNU `dlltool`; focused compiler/VM/CLI and native integration checks are recorded separately.
 
 ## 0.4.3 — 2026-11-18
 
@@ -21,7 +40,7 @@ User-visible release notes for Lutetium. The independent `lutetium-ion` crate ha
 
 ### Known limitations
 - Lutetium, its native backend and both GUI surfaces remain experimental. Native code generation and GUI execution are Windows x86_64 GNU only.
-- `lutetium-ion` uses GDI and does not implement GPU rendering, native accessibility APIs, DPI-aware layout or non-Windows backends.
+- `lutetium-ion` uses Direct2D/DirectWrite with a GDI fallback. It does not implement native accessibility APIs, advanced widget systems, or non-Windows backends.
 - Lutetium imports/modules, closures, structs/enums, generics and sandboxing are not implemented. Optimizer level 3 currently aliases level 2; native `--release` does not configure Cranelift optimization.
 
 ## 0.4.2

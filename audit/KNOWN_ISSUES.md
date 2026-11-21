@@ -1,4 +1,4 @@
-# Known issues and limitations — Lutetium 0.4.3
+# Known issues and limitations — Lutetium 0.4.4 worktree
 
 This document describes implementation scope and verified limitations. Lutetium,
 the native backend and both GUI projects are experimental; passing tests do not
@@ -24,11 +24,13 @@ shared builtin metadata or runtime declarations.
 
 ## Separate Rust ION crate
 
-`lutetium-ion` 0.5.0 is a separate Rust package. It supplies a limited
-component/layout/theme/event foundation and a Windows GDI renderer with
-starter controls and examples. It is not GPU accelerated or cross-platform.
-DPI-aware geometry, native accessibility integration, advanced widgets, and
-non-Windows backends are not implemented. See `../docs/ION_0.5.md`.
+`lutetium-ion` is a separately versioned Rust package. It supplies a limited
+component/layout/theme/event foundation, a Windows Direct2D/DirectWrite renderer
+with GDI fallback, per-monitor-DPI-aware geometry/input, starter controls, and
+examples. The default Direct2D target may use hardware acceleration where
+available; GDI fallback is not GPU accelerated. Native accessibility
+integration, advanced widgets, and non-Windows backends are not implemented.
+See `../docs/ION_0.5.md`.
 
 ## Other language/native limitations
 
@@ -50,9 +52,9 @@ non-Windows backends are not implemented. See `../docs/ION_0.5.md`.
 
 ## Historical test source corrections
 
-Two older compiler end-to-end cases were adjusted to match existing language
-rules, not broaden them: functions do not capture top-level locals, so an
-iterable is passed explicitly; lists are homogeneous, so bool and string
-list-equality checks are separate. Historical 0.4.2 validation results remain
-in `audit/TEST_RESULTS.md`; see the 0.4.3 changelog and current GitHub Actions
-run for current release verification.
+Scratch-named files under `examples/regression/` are retained when they cover
+a language regression such as list iteration, list equality, overflow, or a
+negative diagnostic. The inert comment-only native scratch placeholder was
+removed. `audit/TEST_RESULTS.md` records current uncommitted worktree results
+and the GNU toolchain blocker; do not infer release or hosted CI verification
+from historical records.

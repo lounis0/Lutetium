@@ -1,4 +1,4 @@
-# Lutetium architecture (0.4.3)
+# Lutetium architecture (0.4.4)
 
 ## Source-to-execution pipeline
 
@@ -27,14 +27,16 @@ semantics depend on compiler IR invariants and backend checks.
 - `lu-compiler` — resolver, typechecker/inference, typed IR, lowering,
   optimizer, bytecode codegen and compiler pipeline.
 - `lu-native` — Cranelift x64 Windows GNU object generation and MinGW linking.
-- `lutetium-cli` — `run`, `check`, `build`, `inspect`, `explain`, version/help.
+- `lutetium-cli` — `new`, project-directory-aware `run`/`check`/`build`, `inspect`, `explain`, `doctor`, version/help. The strict dependency-free `lutetium.toml` currently selects one source entry and console/GUI target; it is not a module system.
 - `crates/runtime` — standalone Rust runtime compiled as a static library by
   `crates/native/build.rs` and embedded into native executables.
-- `lutetium-ion` (`crates/ion`) — independent version 0.5.0 Rust UI library,
-  Windows GDI backend and native examples. It does not change the language GUI
-  ABI.
+- `lutetium-ion` (`crates/ion`) — independently versioned Rust UI library,
+  native Windows Direct2D/DirectWrite renderer with GDI fallback, and examples.
+  It does not change the language GUI ABI.
 
 ## Frontend and typed IR
+
+The CLI can scaffold a minimal console or legacy Win32 GUI project with `lutetium new`; its `lutetium.toml` manifest resolves one project-relative `.lu` entry and project output goes to `dist/<name>.*`. Console projects default to a native console executable, GUI projects to a GUI-subsystem executable; `lutetium run` executes console projects in the VM and builds/launches GUI projects. Existing file-oriented CLI commands remain supported. This is project scaffolding, not multi-file module/import support.
 
 The frontend resolves top-level function names and entry points, then checks
 scoped variables, inferred parameter/return types, control flow, builtins,
@@ -96,7 +98,7 @@ does not inject physical mouse input. Window destruction posts thread-wide
 
 ### Separate Rust ION UI crate
 
-`lutetium-ion` 0.5.0 provides a platform-neutral component tree, stack layout,
+`lutetium-ion` provides a platform-neutral component tree, stack layout,
 semantic themes, events/state, backend-neutral draw commands, and starter
 controls. Its Windows backend uses Direct2D/DirectWrite with a GDI fallback,
 per-monitor DPI handling and component-bounded text clipping; examples include

@@ -764,7 +764,7 @@ fn exec_builtin(kind: &BuiltinKind, argv: Vec<Value>, heap: &mut Heap) -> Result
     Ok(match kind {
         ListNew => Value::List(heap.alloc(Obj::List(argv))),
         MapNew => {
-            if argv.len() % 2 != 0 {
+            if !argv.len().is_multiple_of(2) {
                 return Err("map_new expects (key, value) pairs".into());
             }
             // Later duplicate keys win (same as `set` overwriting).

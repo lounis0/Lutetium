@@ -2,12 +2,14 @@
 //! integration-tested; `main.rs` is a thin wrapper.
 
 mod explain;
+mod project;
 
 use explain::explain_code;
 use lu_compiler::compile_source;
 use lu_diagnostics::{diagnostics_json, SourceFile};
 use lu_vm::bytecode::{deserialize, serialize};
 use lu_vm::verify;
+use project::{Project, Template};
 use std::fs;
 use std::io::Write;
 
@@ -17,11 +19,13 @@ pub fn usage() -> i32 {
     println!(
         "Lutetium {v}\n\n\
          usage:\n\
-         \x20 lutetium run <file.lu>                      compile and execute\n\
-         \x20 lutetium build <file.lu> [--target t] [--opt 0-3] [--release]   write build/<name>.lbc or build/<name>.exe (target: bytecode|native|gui)\n\
-         \x20 lutetium check <file.lu> [--diagnostics json]      type-check without running\n\
-         \x20 lutetium inspect <file.lbc> | <file.lu> --ir [--optimized]   disassemble bytecode or typed IR\n\
+         \x20 lutetium new <name> [--template console|gui]   create a project\n\
+         \x20 lutetium run [<file.lu>|<project-dir>]       compile and execute\n\
+         \x20 lutetium build [<file.lu>|<project-dir>] [--target t] [--opt 0-3]\n\
+         \x20 lutetium check [<file.lu>|<project-dir>] [--diagnostics json]\n\
+         \x20 lutetium inspect <file.lbc> | <file.lu> --ir [--optimized]\n\
          \x20 lutetium explain <CODE>                     explain an error code\n\
+         \x20 lutetium doctor                             inspect the native toolchain\n\
          \x20 lutetium --version",
         v = VERSION
     );
@@ -45,6 +49,8 @@ pub fn real_main(args: Vec<String>) -> i32 {
         "check" => cmd_check(rest),
         "inspect" => cmd_inspect(rest),
         "explain" => cmd_explain(rest),
+        "new" => cmd_new(rest),
+        "doctor" => cmd_doctor(),
         other => {
             eprintln!("unknown command `{}`", other);
             eprintln!("run `lutetium help` for usage");
@@ -53,14 +59,166 @@ pub fn real_main(args: Vec<String>) -> i32 {
     }
 }
 
-fn take_file<'a>(args: &'a [String]) -> Result<&'a str, i32> {
-    match args.first() {
-        Some(f) => Ok(f.as_str()),
-        None => {
-            eprintln!("error: expected a source file argument");
-            Err(2)
+#[cfg(windows)]
+fn normalize_windows_path(path: std::path::PathBuf) -> std::path::PathBuf {
+    let text = path.to_string_lossy();
+    if let Some(unc) = text.strip_prefix(r"\\?\UNC\") {
+        std::path::PathBuf::from(format!(r"\\{unc}"))
+    } else if let Some(path) = text.strip_prefix(r"\\?\") {
+        std::path::PathBuf::from(path)
+    } else {
+        path
+    }
+}
+
+#[cfg(not(windows))]
+fn normalize_windows_path(path: std::path::PathBuf) -> std::path::PathBuf {
+    path
+}
+
+fn resolve_input(path: Option<&String>) -> Result<(String, Option<Project>), i32> {
+    let candidate = match path {
+        Some(path) => std::path::PathBuf::from(path),
+        None => std::env::current_dir().map_err(|error| {
+            eprintln!("error: cannot get current directory: {error}");
+            2
+        })?,
+    };
+    if candidate.is_dir() {
+        let manifest_path = candidate.join(project::MANIFEST);
+        let contents = fs::read_to_string(&manifest_path).map_err(|error| {
+            eprintln!(
+                "error: project manifest `{}` is unavailable: {error}",
+                manifest_path.display()
+            );
+            2
+        })?;
+        let project = project::parse_manifest(&candidate, &contents).map_err(|error| {
+            eprintln!("error: {error}");
+            2
+        })?;
+        let source = project.source_path();
+        if !source.is_file() {
+            eprintln!("error: project entry `{}` does not exist", source.display());
+            return Err(2);
+        }
+        let root = candidate.canonicalize().map_err(|error| {
+            eprintln!(
+                "error: cannot resolve project directory `{}`: {error}",
+                candidate.display()
+            );
+            2
+        })?;
+        let source = source.canonicalize().map_err(|error| {
+            eprintln!(
+                "error: cannot resolve project entry `{}`: {error}",
+                source.display()
+            );
+            2
+        })?;
+        if !source.starts_with(&root) {
+            eprintln!("error: project entry resolves outside the project directory");
+            return Err(2);
+        }
+        let project = Project {
+            root: normalize_windows_path(root),
+            ..project
+        };
+        let source = normalize_windows_path(source);
+        return Ok((source.to_string_lossy().into_owned(), Some(project)));
+    }
+    if path.is_none() {
+        eprintln!("error: expected a source file or project directory");
+        return Err(2);
+    }
+    Ok((candidate.to_string_lossy().into_owned(), None))
+}
+
+fn validate_cli_flags(
+    args: &[String],
+    value_flags: &[&str],
+    boolean_flags: &[&str],
+    value_domains: &[(&str, &[&str])],
+) -> Result<(), String> {
+    let mut seen = std::collections::HashSet::new();
+    let mut args = args.iter();
+    while let Some(arg) = args.next() {
+        let (name, inline_value) = arg
+            .split_once('=')
+            .map_or((arg.as_str(), None), |(name, value)| (name, Some(value)));
+        if value_flags.contains(&name) {
+            if !seen.insert(name) {
+                return Err(format!("{name} may only be specified once"));
+            }
+            let value = match inline_value {
+                Some(value) if !value.is_empty() => value,
+                Some(_) => return Err(format!("{name} needs a value")),
+                None => match args.next() {
+                    Some(value) if !value.starts_with("--") && !value.is_empty() => value,
+                    _ => return Err(format!("{name} needs a value")),
+                },
+            };
+            if let Some((_, allowed)) = value_domains.iter().find(|(flag, _)| *flag == name) {
+                if !allowed.contains(&value) {
+                    return Err(format!("{name} has an invalid value `{value}`"));
+                }
+            }
+            continue;
+        }
+        if boolean_flags.contains(&name) {
+            if inline_value.is_some() {
+                return Err(format!("{name} does not take a value"));
+            }
+            if !seen.insert(name) {
+                return Err(format!("{name} may only be specified once"));
+            }
+            continue;
+        }
+        if arg.starts_with("--") {
+            return Err(format!("unknown or invalid flag `{arg}`"));
         }
     }
+    Ok(())
+}
+
+fn command_input<'a>(
+    args: &'a [String],
+    value_flags: &[&str],
+    boolean_flags: &[&str],
+) -> Result<Option<&'a String>, String> {
+    let mut args = args.iter();
+    let mut input = None;
+    while let Some(arg) = args.next() {
+        if value_flags.contains(&arg.as_str()) {
+            let Some(value) = args.next() else {
+                return Err(format!("{arg} needs a value"));
+            };
+            if value.starts_with("--") || value.is_empty() {
+                return Err(format!("{arg} needs a value"));
+            }
+        } else if let Some((name, value)) = arg.split_once('=') {
+            if value_flags.contains(&name) {
+                if value.is_empty() {
+                    return Err(format!("{name} needs a value"));
+                }
+                continue;
+            }
+            if boolean_flags.contains(&name) {
+                return Err(format!("{name} does not take a value"));
+            }
+            if arg.starts_with("--") {
+                continue;
+            }
+            if input.replace(arg).is_some() {
+                return Err("expected only one source file or project directory".into());
+            }
+        } else if boolean_flags.contains(&arg.as_str()) || arg.starts_with("--") {
+            continue;
+        } else if input.replace(arg).is_some() {
+            return Err("expected only one source file or project directory".into());
+        }
+    }
+    Ok(input)
 }
 
 fn compile_file(path: &str) -> Result<lu_vm::bytecode::BytecodeModule, i32> {
@@ -91,26 +249,37 @@ fn compile_file(path: &str) -> Result<lu_vm::bytecode::BytecodeModule, i32> {
 fn cmd_run(args: &[String]) -> i32 {
     let mut gc_stats = false;
     let mut gc_stress = false;
-    let filtered: Vec<String> = args
-        .iter()
-        .filter(|a| match a.as_str() {
-            "--gc-stats" => {
-                gc_stats = true;
-                false
-            }
-            "--gc-stress" => {
-                gc_stress = true;
-                false
-            }
-            _ => true,
-        })
-        .cloned()
-        .collect();
-    let path = match take_file(&filtered) {
-        Ok(p) => p,
-        Err(c) => return c,
+    if let Err(error) = validate_cli_flags(args, &[], &["--gc-stats", "--gc-stress"], &[]) {
+        eprintln!("error: {error}");
+        return 2;
+    }
+    let mut filtered = Vec::new();
+    for arg in args {
+        match arg.as_str() {
+            "--gc-stats" => gc_stats = true,
+            "--gc-stress" => gc_stress = true,
+            _ => filtered.push(arg.clone()),
+        }
+    }
+    let input = match command_input(&filtered, &[], &[]) {
+        Ok(Some(input)) => input,
+        Ok(None) => {
+            eprintln!("error: expected a source file or project directory");
+            return 2;
+        }
+        Err(error) => {
+            eprintln!("error: {error}");
+            return 2;
+        }
     };
-    let module = match compile_file(path) {
+    let (path, project) = match resolve_input(Some(input)) {
+        Ok(input) => input,
+        Err(code) => return code,
+    };
+    if let Some(project) = project.filter(|project| project.kind == Template::Gui) {
+        return run_gui_project(&project);
+    }
+    let module = match compile_file(&path) {
         Ok(m) => m,
         Err(c) => return c,
     };
@@ -154,7 +323,7 @@ fn cmd_run(args: &[String]) -> i32 {
     }
 }
 
-fn build_native(path: &str, opt: u8, release: bool, gui: bool) -> i32 {
+fn build_native(path: &str, out_exe: &std::path::Path, opt: u8, release: bool, gui: bool) -> i32 {
     let src = match fs::read_to_string(path) {
         Ok(s) => s,
         Err(e) => {
@@ -173,21 +342,20 @@ fn build_native(path: &str, opt: u8, release: bool, gui: bool) -> i32 {
             return 1;
         }
     };
-    let stem = std::path::Path::new(path)
-        .file_stem()
-        .and_then(|s| s.to_str())
-        .unwrap_or("app");
-    let out_dir = std::path::Path::new("build");
-    if let Err(e) = fs::create_dir_all(out_dir) {
-        eprintln!("error: cannot create build directory: {}", e);
-        return 2;
+    if let Some(parent) = out_exe.parent() {
+        if let Err(error) = fs::create_dir_all(parent) {
+            eprintln!(
+                "error: cannot create output directory `{}`: {error}",
+                parent.display()
+            );
+            return 2;
+        }
     }
-    let out_exe = out_dir.join(format!("{}.exe", stem));
     let started = std::time::Instant::now();
     let build = if gui {
-        lu_native::build_gui_exe(&ir, &out_exe)
+        lu_native::build_gui_exe(&ir, out_exe)
     } else {
-        lu_native::build_exe(&ir, &out_exe)
+        lu_native::build_exe(&ir, out_exe)
     };
     if let Err(e) = build {
         eprintln!("{}", e);
@@ -205,15 +373,37 @@ fn build_native(path: &str, opt: u8, release: bool, gui: bool) -> i32 {
 }
 
 fn cmd_build(args: &[String]) -> i32 {
-    let positional: Vec<&String> = args.iter().filter(|a| !a.starts_with("--")).collect();
-    let path = match positional.first() {
-        Some(p) => p.as_str(),
-        None => {
-            eprintln!("error: expected a source file argument");
+    if let Err(error) = validate_cli_flags(
+        args,
+        &["--target", "--opt"],
+        &["--release"],
+        &[("--target", &["bytecode", "native", "gui"])],
+    ) {
+        eprintln!("error: {error}");
+        return 2;
+    }
+    let input = match command_input(args, &["--target", "--opt"], &["--release"]) {
+        Ok(Some(input)) => input,
+        Ok(None) => {
+            eprintln!("error: expected a source file or project directory");
+            return 2;
+        }
+        Err(error) => {
+            eprintln!("error: {error}");
             return 2;
         }
     };
-    let mut target = "bytecode";
+    let resolved = match resolve_input(Some(input)) {
+        Ok(input) => input,
+        Err(code) => return code,
+    };
+    let path = resolved.0.as_str();
+    let project = resolved.1;
+    let mut target = match project.as_ref().map(|project| project.kind) {
+        Some(Template::Console) => "native",
+        Some(Template::Gui) => "gui",
+        None => "bytecode",
+    };
     let mut release = false;
     let mut opt: u8 = 2;
     let mut it = args.iter().peekable();
@@ -226,9 +416,7 @@ fn cmd_build(args: &[String]) -> i32 {
                     return 2;
                 }
             },
-            "--target=bytecode" => target = "bytecode",
-            "--target=native" => target = "native",
-            "--target=gui" => target = "gui",
+            other if other.starts_with("--target=") => target = &other[9..],
             "--release" => release = true,
             "--opt" => match it.next().and_then(|v| v.parse::<u8>().ok()) {
                 Some(v) if v <= 3 => opt = v,
@@ -258,8 +446,30 @@ fn cmd_build(args: &[String]) -> i32 {
         );
         return 2;
     }
+    if target == "gui"
+        && project
+            .as_ref()
+            .is_some_and(|project| project.kind != Template::Gui)
+    {
+        eprintln!("error: GUI target requires a project with `kind = \"gui\"`");
+        return 2;
+    }
     if target == "native" || target == "gui" {
-        return build_native(path, opt, release, target == "gui");
+        let output = if let Some(project) = &project {
+            project.output_path("exe")
+        } else {
+            let stem = std::path::Path::new(path)
+                .file_stem()
+                .and_then(|stem| stem.to_str())
+                .unwrap_or("app");
+            std::path::PathBuf::from("build").join(format!("{stem}.exe"))
+        };
+        let status = build_native(path, &output, opt, release, target == "gui");
+        if project.is_some() {
+            let _ = fs::remove_file(output.with_extension("obj"));
+            let _ = fs::remove_file(output.with_extension("runtime.a"));
+        }
+        return status;
     }
     let src = match fs::read_to_string(path) {
         Ok(s) => s,
@@ -284,16 +494,24 @@ fn cmd_build(args: &[String]) -> i32 {
         eprintln!("{}", e);
         return 1;
     }
-    let stem = std::path::Path::new(path)
-        .file_stem()
-        .and_then(|s| s.to_str())
-        .unwrap_or("app");
-    let out_dir = std::path::Path::new("build");
-    if let Err(e) = fs::create_dir_all(out_dir) {
-        eprintln!("error: cannot create build directory: {}", e);
-        return 2;
+    let out_path = if let Some(project) = &project {
+        project.output_path("lbc")
+    } else {
+        let stem = std::path::Path::new(path)
+            .file_stem()
+            .and_then(|stem| stem.to_str())
+            .unwrap_or("app");
+        std::path::Path::new("build").join(format!("{stem}.lbc"))
+    };
+    if let Some(parent) = out_path.parent() {
+        if let Err(error) = fs::create_dir_all(parent) {
+            eprintln!(
+                "error: cannot create output directory `{}`: {error}",
+                parent.display()
+            );
+            return 2;
+        }
     }
-    let out_path = out_dir.join(format!("{}.lbc", stem));
     if let Err(e) = fs::write(&out_path, serialize(&module)) {
         eprintln!("error: cannot write `{}`: {}", out_path.display(), e);
         return 2;
@@ -306,20 +524,41 @@ fn cmd_build(args: &[String]) -> i32 {
 }
 
 fn cmd_check(args: &[String]) -> i32 {
-    let positional: Vec<&String> = args.iter().filter(|a| !a.starts_with("--")).collect();
-    let path = match positional.first() {
-        Some(p) => p.as_str(),
-        None => {
-            eprintln!("error: expected a source file argument");
+    if let Err(error) = validate_cli_flags(
+        args,
+        &["--diagnostics"],
+        &[],
+        &[("--diagnostics", &["json"])],
+    ) {
+        eprintln!("error: {error}");
+        return 2;
+    }
+    let input = match command_input(args, &["--diagnostics"], &[]) {
+        Ok(Some(input)) => input,
+        Ok(None) => {
+            eprintln!("error: expected a source file or project directory");
+            return 2;
+        }
+        Err(error) => {
+            eprintln!("error: {error}");
             return 2;
         }
     };
-    let json = args
+    let resolved = match resolve_input(Some(input)) {
+        Ok(input) => input,
+        Err(code) => return code,
+    };
+    let path = resolved.0.as_str();
+    let json = args.iter().any(|arg| arg == "--diagnostics=json")
+        || args
+            .windows(2)
+            .any(|pair| pair[0] == "--diagnostics" && pair[1] == "json");
+    if args
         .iter()
-        .any(|a| a == "--diagnostics" && args.iter().any(|b| b == "json"))
-        || args.iter().any(|a| a == "--diagnostics=json");
-    if args.iter().any(|a| a == "--diagnostics") && !json {
-        eprintln!("error: --diagnostics needs a value (json)");
+        .any(|arg| arg == "--diagnostics" || arg.starts_with("--diagnostics="))
+        && !json
+    {
+        eprintln!("error: --diagnostics supports only `json`");
         return 2;
     }
     let src = match fs::read_to_string(path) {
@@ -412,6 +651,114 @@ fn cmd_inspect(args: &[String]) -> i32 {
                 eprintln!("{}", e);
                 1
             }
+        }
+    }
+}
+
+fn cmd_new(args: &[String]) -> i32 {
+    let mut name = None;
+    let mut template = Template::Console;
+    let mut template_seen = false;
+    let mut it = args.iter();
+    while let Some(arg) = it.next() {
+        let value = if arg == "--template" {
+            match it.next() {
+                Some(value) => Some(value.as_str()),
+                None => {
+                    eprintln!("error: --template needs a value (console|gui)");
+                    return 2;
+                }
+            }
+        } else if let Some(value) = arg.strip_prefix("--template=") {
+            Some(value)
+        } else if arg.starts_with("--") {
+            eprintln!("error: unknown flag `{arg}`");
+            return 2;
+        } else {
+            if name.replace(arg.as_str()).is_some() {
+                eprintln!("error: expected one project name");
+                return 2;
+            }
+            None
+        };
+        if let Some(value) = value {
+            if template_seen {
+                eprintln!("error: --template may only be specified once");
+                return 2;
+            }
+            template_seen = true;
+            template = match value {
+                "console" => Template::Console,
+                "gui" => Template::Gui,
+                _ => {
+                    eprintln!("error: unknown template `{value}` (expected console or gui)");
+                    return 2;
+                }
+            };
+        }
+    }
+    let Some(name) = name else {
+        eprintln!("error: expected a project name");
+        return 2;
+    };
+    let parent = match std::env::current_dir() {
+        Ok(parent) => parent,
+        Err(error) => {
+            eprintln!("error: cannot get current directory: {error}");
+            return 2;
+        }
+    };
+    match project::create_project(&parent, name, template) {
+        Ok(path) => {
+            println!(
+                "created {} project at {}",
+                template.as_str(),
+                path.display()
+            );
+            println!("next: lutetium check {}", path.display());
+            println!("      lutetium build {}", path.display());
+            0
+        }
+        Err(error) => {
+            eprintln!("error: {error}");
+            2
+        }
+    }
+}
+
+fn run_gui_project(project: &Project) -> i32 {
+    let source = project.source_path();
+    let output = project.output_path("exe");
+    let status = build_native(&source.to_string_lossy(), &output, 2, false, true);
+    let _ = fs::remove_file(output.with_extension("obj"));
+    let _ = fs::remove_file(output.with_extension("runtime.a"));
+    if status != 0 {
+        return status;
+    }
+    match std::process::Command::new(&output).status() {
+        Ok(status) if status.success() => 0,
+        Ok(status) => status.code().unwrap_or(1),
+        Err(error) => {
+            eprintln!("error: cannot launch `{}`: {error}", output.display());
+            1
+        }
+    }
+}
+
+fn cmd_doctor() -> i32 {
+    println!("Lutetium {}", VERSION);
+    println!("host: {}", std::env::consts::OS);
+    println!("native target: {}", lu_native::TARGET_TRIPLE);
+    match lu_native::linker::find_toolchain() {
+        Ok(toolchain) => {
+            println!("native linker: {}", toolchain.gcc.display());
+            println!("native libraries: {}", toolchain.libs.display());
+            println!("native build: available");
+            0
+        }
+        Err(error) => {
+            println!("native build: unavailable ({error})");
+            1
         }
     }
 }

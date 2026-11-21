@@ -1,6 +1,6 @@
 # Historical Lutetium repository inventory
 
-> **Historical snapshot, superseded.** This inventory predates Lutetium 0.4.3, the independent Rust ION crate, and the current native arithmetic overflow fixes. The 0.4.2 worktree audit and test counts below are retained as historical records only. Current scope is in [`../README.md`](../README.md), [`../docs/ARCHITECTURE.md`](../docs/ARCHITECTURE.md), and [`KNOWN_ISSUES.md`](KNOWN_ISSUES.md).
+> **Historical snapshot, superseded.** This inventory predates Lutetium 0.4.3/0.4.4 updates and must not be used as current file inventory, scope, or test status. Current scope is in [`../README.md`](../README.md), [`../docs/ARCHITECTURE.md`](../docs/ARCHITECTURE.md), [`KNOWN_ISSUES.md`](KNOWN_ISSUES.md), and [`TEST_RESULTS.md`](TEST_RESULTS.md).
 
 **Original snapshot:** repository inspected 2026-11-12; release-preparation updates performed afterward.
 
@@ -8,7 +8,7 @@
 
 | Path | Role and current note |
 |---|---|
-| `Cargo.toml` | Workspace manifest; six crates, version 0.4.2, Rust 2021; release uses thin LTO, one codegen unit, strip. |
+| `Cargo.toml` | At the 0.4.2 snapshot: six crates, version 0.4.2, Rust 2021; release uses thin LTO, one codegen unit, strip. Current workspace now includes ION and is aligned to 0.4.4; see current README and test results. |
 | `Cargo.lock` | Locked dependency graph; preserve for reproducible builds. |
 | `rust-toolchain.toml` | Pins stable Windows GNU toolchain. |
 | `.cargo/config.toml` | Forces `x86_64-pc-windows-gnu`; real platform limitation. |
@@ -18,7 +18,7 @@
 | `CONTRIBUTING.md` | Build, architecture, test and language-change contribution guidance. |
 | `SECURITY.md` | Experimental/untrusted-code warnings and responsible reporting guidance; no private contact invented. |
 | `CHANGELOG.md` | Current package version and selected historical development facts; explicitly points to audit for actual status. |
-| `ERROR_CODES.json` | Machine-readable diagnostic metadata; known to lag source codes/version, documented in audit. |
+| `ERROR_CODES.json` | Machine-readable diagnostic metadata; current worktree language version aligned to 0.4.4. |
 | `DECISIONS.md` | Useful historical implementation/design decisions; retained. |
 | `DEVELOPMENT_AUDIT.md`, `DEVELOPMENT_REPORT.md` | Superseded milestone reports; removed after their useful facts were captured in `audit/`. |
 | `CURRENT_STATE.md` | Superseded status snapshot with stale green-test claims; removed. |
@@ -38,7 +38,7 @@
 | `crates/vm` | LTBC format, verifier, register VM, collections and GC (`lu-vm`). |
 | `crates/native` | Cranelift backend, native build facade and Windows GNU linker. |
 | `crates/runtime` | Runtime source compiled by native `build.rs` using a relative path; must remain here unless build script changes in same tested change. |
-| `examples/` | Actual Lutetium programs: `fibonacci.lu`, `hello.lu`, `maps.lu`, `strings.lu`; concise syntax subdirectory; historical scratch repros retained under `regression/`. Generated output directory was removed. |
+| `examples/` | Lutetium programs, concise syntax, Rust ION examples, and the legacy language GUI example. Scratch-named `.lu` files are retained where they contain meaningful iteration/equality/diagnostic regression cases. |
 | `docs/` | Existing language, grammar, architecture, bytecode, runtime and builtin docs. |
 | `audit/` | Exactly the six requested verified audit/roadmap files. |
 | `scripts/` | Windows installer, uninstaller and distribution builder. |
@@ -92,7 +92,7 @@
 - `src/linker.rs`: locates rustup's Windows GNU MinGW driver and system libraries; console/GUI PE subsystem switch.
 - `src/lib.rs`: target ISA, object build, console and GUI-subsystem executable facade. GUI helper is not connected to a functioning frontend/runtime/CLI path.
 - `tests/native_exe.rs`: 11 generated console-executable integration tests, presently prevented from compiling by native match error.
-- `tests/scratch_ir.rs`: inert comment-only historical placeholder; retained.
+- `tests/scratch_ir.rs`: inert comment-only placeholder at the original snapshot; removed in the 2026-11-20 cleanup.
 - `Cargo.toml`: mandatory Cranelift crates and target-lexicon, compiler path dependency; VM dev dependency.
 
 ### `lu-runtime` — `crates/runtime` (outside workspace)
@@ -112,7 +112,7 @@
 
 Test surfaces: syntax lexer/parser units (24 passed); VM heap units (8 passed); compiler e2e (115 attempted, 113 pass); native exe tests (11 in source, build-blocked); native unit tests (2 in source, build-blocked); CLI tests (12 in source, build-blocked). No GUI tests exist.
 
-Examples include scalar/functions/strings/maps and concise syntax. Old scratch sources were retained in `examples/regression/` because some are useful to reproduce issues; their names/content make status clear. Generated `examples/build` outputs were removed and ignored.
+Examples include scalar/functions/strings/maps, concise syntax, legacy language GUI, and separate Rust ION apps. Scratch-named compiler fixtures remain where they provide regression coverage; generated outputs are ignored.
 
 ## External packages and build constraints
 

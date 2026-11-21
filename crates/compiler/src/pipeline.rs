@@ -20,10 +20,7 @@ pub fn compile_ir_with_opts(_name: &str, src: &str, opt: u8) -> Result<IrModule,
     if !lex_diags.is_empty() {
         return Err(lex_diags);
     }
-    let module = match parse(tokens) {
-        Ok(m) => m,
-        Err(diags) => return Err(diags),
-    };
+    let module = parse(tokens)?;
     let sigs = resolve(&module)?;
     let tmodule = check(&module, &sigs)?;
     let mut ir = lower(&tmodule);

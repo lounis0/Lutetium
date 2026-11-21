@@ -1,5 +1,9 @@
 # SESSION_LOG.md
 
+## Historical sessions (2026-11-11 to 2026-11-12)
+
+Entries below are retained development history, not a report of the current worktree.
+
 ## 2026-11-11 — session (0.4 lists/builtins completion + dev infra)
 
 * Resumed from interrupted work; ~80 compile errors in lu-compiler fixed by
@@ -28,6 +32,5 @@
   concurrently; the runtime archive is now per-exe (`<stem>.runtime.a`).
   5x native suite + 5x CLI suite + 2x full workspace runs all green.
   Decision D-25 recorded (D-7 layout updated).
-* K3 fully cleared: `crates/compiler/tests/scratch_dump.rs` and
-  `crates/native/tests/scratch_ir.rs` both deleted.
+* K3 was recorded as cleared; the inert `crates/native/tests/scratch_ir.rs` placeholder was subsequently present in the tracked tree and was removed during the 2026-11-20 cleanup.
 * Next: T2 (`for x in lst` + list equality builtin).

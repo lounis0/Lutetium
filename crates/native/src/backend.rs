@@ -83,13 +83,13 @@ fn check_supported(ir: &IrModule) -> Result<(), NativeError> {
         for b in &f.blocks {
             for instr in &b.instrs {
                 match instr {
-                    IrInstr::Builtin { kind, .. }
-                        if matches!(
-                            kind,
+                    IrInstr::Builtin {
+                        kind:
                             lu_vm::bytecode::BuiltinKind::GuiWindow
-                                | lu_vm::bytecode::BuiltinKind::GuiRun
-                                | lu_vm::bytecode::BuiltinKind::GuiClose
-                        ) => {}
+                            | lu_vm::bytecode::BuiltinKind::GuiRun
+                            | lu_vm::bytecode::BuiltinKind::GuiClose,
+                        ..
+                    } => {}
                     IrInstr::Builtin { kind, .. } => {
                         return Err(NativeError(format!(
                             "function `{}` uses the built-in `{}`, which the native backend does not support yet; run with the bytecode VM instead",

@@ -1,6 +1,6 @@
 [package]
 name = "lu-runtime"
-version = "0.4.3"
+version = "0.4.4"
 edition = "2021"
 
 # The runtime is not built as an ordinary workspace crate; it is compiled by

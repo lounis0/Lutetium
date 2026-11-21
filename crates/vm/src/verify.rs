@@ -211,13 +211,13 @@ fn decode(m: &BytecodeModule, fi: usize, ip: usize) -> Result<Decoded, (usize, S
             let d = r.u16().map_err(|e| (ip, e))?;
             let argc = r.u8().map_err(|e| (ip, e))? as usize;
             let kind = crate::bytecode::BuiltinKind::from_u8(kind)
-                .ok_or((ip, format!("unknown builtin kind")))?;
+                .ok_or((ip, "unknown builtin kind".to_string()))?;
             let (want_argc, _) = kind.sig();
             // ListNew takes a variable number of elements; MapNew takes
             // interleaved (key, value) pairs, so its argc must be even.
             let argc_ok = match kind {
                 crate::bytecode::BuiltinKind::ListNew => true,
-                crate::bytecode::BuiltinKind::MapNew => argc % 2 == 0,
+                crate::bytecode::BuiltinKind::MapNew => argc.is_multiple_of(2),
                 _ => argc == want_argc,
             };
             if !argc_ok {

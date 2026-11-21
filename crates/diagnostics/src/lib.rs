@@ -193,16 +193,18 @@ pub fn diagnostics_json(file: &SourceFile, diags: &[Diagnostic]) -> String {
         if i > 0 {
             out.push(',');
         }
+        let source = file.line_text(line);
         let _ = write!(
             out,
-            "{{\"code\":\"{}\",\"severity\":\"{}\",\"line\":{},\"column\":{},\"endLine\":{},\"endColumn\":{},\"message\":\"{}\"",
+            "{{\"code\":\"{}\",\"severity\":\"{}\",\"line\":{},\"column\":{},\"endLine\":{},\"endColumn\":{},\"message\":\"{}\",\"source\":\"{}\"",
             d.code,
             d.severity.as_str(),
             line,
             col,
             end_line,
             end_col,
-            json_escape(&d.message)
+            json_escape(&d.message),
+            json_escape(source)
         );
         if let Some(h) = &d.hint {
             let _ = write!(out, ",\"hint\":\"{}\"", json_escape(h));
@@ -211,4 +213,40 @@ pub fn diagnostics_json(file: &SourceFile, diags: &[Diagnostic]) -> String {
     }
     out.push_str("]}");
     out
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn json_diagnostics_include_source_and_escape_user_text() {
+        let source = "fn main() {\n    print(\"é\")\n}\n";
+        let file = SourceFile::new(r#"src/"main.lu"#, source);
+        let diagnostic = Diagnostic::error(
+            "E3005",
+            Span::new(
+                source.find("print").unwrap(),
+                source.find("print").unwrap() + 5,
+            ),
+            "unknown variable `名`",
+        )
+        .with_hint("check the \"spelling\"");
+        let json = diagnostics_json(&file, &[diagnostic]);
+        assert!(json.starts_with("{\"file\":\"src/\\\"main.lu\",\"diagnostics\":["));
+        assert!(json.contains("\"code\":\"E3005\""));
+        assert!(json.contains("\"line\":2,\"column\":5"));
+        assert!(json.contains("\"source\":\"    print(\\\"é\\\")\""));
+        assert!(json.contains("\"message\":\"unknown variable `名`\""));
+        assert!(json.contains("\"hint\":\"check the \\\"spelling\\\"\""));
+    }
+
+    #[test]
+    fn json_diagnostics_support_empty_success_results() {
+        let file = SourceFile::new("app.lu", "fn main() {}\n");
+        assert_eq!(
+            diagnostics_json(&file, &[]),
+            "{\"file\":\"app.lu\",\"diagnostics\":[]}"
+        );
+    }
 }

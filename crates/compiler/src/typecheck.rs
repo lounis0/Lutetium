@@ -206,9 +206,7 @@ fn unify(a: Option<CTy>, b: CTy) -> Result<CTy, ()> {
         (Some(CTy::L(a)), CTy::L(b)) => {
             if a == b {
                 Ok(CTy::L(a))
-            } else if a == BcTy::Int && b == BcTy::Float {
-                Ok(CTy::L(BcTy::Float))
-            } else if a == BcTy::Float && b == BcTy::Int {
+            } else if matches!((a, b), (BcTy::Int, BcTy::Float) | (BcTy::Float, BcTy::Int)) {
                 Ok(CTy::L(BcTy::Float))
             } else {
                 Err(())
@@ -720,7 +718,6 @@ impl<'a> FnCx<'a> {
             params: (0..self.sigs[self.index].params.len())
                 .map(|i| {
                     self.sigs[self.index].params[i]
-                        .map(|t| t)
                         .unwrap_or_else(|| self.state[self.index].params[i].clone().to_bc())
                 })
                 .collect(),
@@ -886,10 +883,7 @@ impl<'a> FnCx<'a> {
                     });
                 }
 
-                let slot = match self.lookup(target, *target_span) {
-                    Some(s) => s,
-                    None => return None,
-                };
+                let slot = self.lookup(target, *target_span)?;
                 let info = self.locals[slot as usize].clone();
                 let info_ty = info.ty;
                 if !info.mutable {
@@ -1703,7 +1697,7 @@ impl<'a> FnCx<'a> {
                     };
                     match name.as_str() {
                         "len" => {
-                            if targs.len() != 0 {
+                            if !targs.is_empty() {
                                 self.hint_err(
                                     "E3007",
                                     *span,
